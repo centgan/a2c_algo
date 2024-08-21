@@ -7080,3 +7080,80 @@
 2024-08-21 11:42:39,206  ERROR: A trade is already open can not open another one
 2024-08-21 11:42:39,409  ERROR: A trade is already open can not open another one
 2024-08-21 11:42:39,508  ERROR: A trade is already open can not open another one
+2024-08-21 16:13:06,558  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:13:06,883  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:13:07,507  ERROR: A trade is already open can not open another one
+2024-08-21 16:13:08,059  ERROR: A trade is already open can not open another one
+2024-08-21 16:13:45,820  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:13:46,012  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:14:10,516  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:14:10,719  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:14:56,789  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:14:56,966  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:14:57,724  ERROR: A trade is already open can not open another one
+2024-08-21 16:14:57,815  ERROR: A trade is already open can not open another one
+2024-08-21 16:14:58,092  ERROR: A trade is already open can not open another one
+2024-08-21 16:15:27,532  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:15:27,755  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:16:04,432  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:16:04,620  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:16:05,186  ERROR: A trade is already open can not open another one
+2024-08-21 16:16:05,546  ERROR: A trade is already open can not open another one
+2024-08-21 16:16:05,728  ERROR: A trade is already open can not open another one
+2024-08-21 16:16:05,999  ERROR: A trade is already open can not open another one
+2024-08-21 16:16:06,547  ERROR: A trade is already open can not open another one
+2024-08-21 16:18:17,584  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:18:17,785  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:18:26,265  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:18:26,433  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:20:30,881  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:20:31,094  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:22:30,686  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:22:30,852  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:28:06,084  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:28:06,294  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:28:26,493  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:28:26,693  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:28:27,165  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:36,813  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:28:37,029  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:28:37,595  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:37,686  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:37,878  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:37,967  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:38,160  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:38,249  ERROR: A trade is already open can not open another one
+2024-08-21 16:28:38,349  ERROR: A trade is already open can not open another one
+2024-08-21 16:30:53,866  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:30:54,043  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:31:08,803  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:31:08,980  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:31:35,637  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:31:35,829  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:31:36,578  ERROR: A trade is already open can not open another one
+2024-08-21 16:31:36,761  ERROR: A trade is already open can not open another one
+2024-08-21 16:31:37,498  ERROR: A trade is already open can not open another one
+2024-08-21 16:31:37,589  ERROR: A trade is already open can not open another one
+2024-08-21 16:33:08,692  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:33:08,859  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:33:24,624  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:33:24,809  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:33:46,390  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:33:46,598  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:35:26,257  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:35:26,479  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:36:04,084  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:36:04,266  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:36:04,937  ERROR: A trade is already open can not open another one
+2024-08-21 16:36:49,236  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:36:49,429  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:36:50,093  ERROR: A trade is already open can not open another one
+2024-08-21 16:37:57,699  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 16:37:57,916  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 16:37:58,482  ERROR: A trade is already open can not open another one
+2024-08-21 16:37:59,115  ERROR: A trade is already open can not open another one
+2024-08-21 16:37:59,208  ERROR: A trade is already open can not open another one
+2024-08-21 17:14:25,828  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 17:14:26,116  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00
+2024-08-21 17:17:12,809  INFO: Start of new Training from 2011-01-03 00:00:00 to 2020-02-01 00:00:00 on NAS100_USD
+2024-08-21 17:17:19,720  INFO: Data pull from 2011-01-03 00:00:00 to 2011-01-03 06:00:00

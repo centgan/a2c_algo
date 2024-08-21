@@ -3,3 +3,4 @@ tester_gaps.json
 tester_no_gaps.json
 tester.json
 Environment.log
+__pycache__

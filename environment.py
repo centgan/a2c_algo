@@ -16,6 +16,46 @@ ACCOUNT_ID = "101-002-25776676-003"
 TOKEN = "d8e783a23ff8bab21476e440b3d578ef-207d5f7676d7d82839a50d4907b3d6e6"
 
 
+# Data should be the previous 60 days worth of data with the most recent being at the end of the list
+def rsi(data):
+    # Check if this works
+    working_range = 30
+    upward = []
+    downward = []
+    for i in range(len(data)):
+        if i == 0:
+            pass
+        if data[i][-2] > data[i-1][-2]:
+            upward.append(data[i][-2] - data[i-1][-2])
+            downward.append(0)
+        else:
+            downward.append(data[i-1][-2] - data[i][-2])
+            upward.append(0)
+    avg_up = sum(upward[:working_range]) / len(upward[:working_range])
+    avg_down = sum(downward[:working_range]) / len(downward[:working_range])
+
+    rsi_out = []
+    for i in range(working_range, len(data)):
+        avg_up = ((avg_up * (working_range - 1) + upward[i])/working_range)
+        avg_down = ((avg_down * (working_range - 1) + downward[i])/working_range)
+        rs = avg_up/avg_down
+        rsi_out.append(100 - (100/(rs+1)))
+
+    return rsi_out
+
+
+def macd(data):
+    pass
+
+
+def order_block(data):
+    pass
+
+
+def fvg(data):
+    pass
+
+
 class EnviroTraining:
     def __init__(self, instrument, train_start, train_end):
         self.instrument = instrument
@@ -163,7 +203,7 @@ class EnviroTraining:
                                        reward_multiplier[self.instrument]) - 1
                 else:
                     # throw error
-                    self.logger.error('A trade is already open can not open another one')
+                    # self.logger.error('A trade is already open can not open another one')
                     pass
 
         # return the state space

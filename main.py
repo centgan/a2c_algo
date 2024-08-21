@@ -1,5 +1,4 @@
 # This is a sample Python script.
-from datetime import timedelta
 
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
@@ -7,6 +6,7 @@ from datetime import timedelta
 from environment import EnviroTraining
 from model import Agent, AgentSep
 import matplotlib.pyplot as plt
+import time
 
 if __name__ == '__main__':
     env = EnviroTraining('NAS100_USD', '2011-01-03', '2020-02-01')
@@ -17,6 +17,7 @@ if __name__ == '__main__':
 
     observation = env.env_out
     balance = 0
+    pre_balance = 0
     highest_balance = 0
     reward_history = []
     action_mapping = ['sell', 'hold', 'buy']
@@ -32,7 +33,12 @@ if __name__ == '__main__':
             agent.learn(observation, reward_unreal, observation_)
         observation = observation_
 
-        print(balance)
+        if len(reward_history) == 0:
+            print('balance')
+        if balance != pre_balance:
+            print(balance)
+        pre_balance = balance
+        # print(balance)
         if balance > highest_balance and not load_checkpoint:
             highest_balance = balance
             agent.save_model()

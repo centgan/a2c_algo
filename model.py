@@ -3,6 +3,8 @@ from tensorflow.keras.optimizers import Adam
 import tensorflow_probability as tfp
 from network import ActorCriticNetwork, ActorNetwork, CriticNetwork
 import logging
+import time
+import numpy as np
 
 
 class Agent:
@@ -87,11 +89,24 @@ class AgentSep:
 
     def choose_action(self, observation):
         state = tf.convert_to_tensor([observation])
-
+        # start = time.time()
         probs = self.actor.call(state)
 
+        # actor_time = time.time()
+        # print("---to actor call----: ", actor_time - start)
         # print(probs)
         action_probs = tfp.distributions.Categorical(probs=probs)
+        # probs_numpy = probs.numpy()[0]
+        # cumulative_probs = np.cumsum(probs_numpy)
+        # # Generate a random number
+        # random_value = np.random.rand()
+        # # Find the category based on the random value
+        # for i, cumulative_prob in enumerate(cumulative_probs):
+        #     if random_value < cumulative_prob:
+        #         action = i
+        #         print(i)
+        #         break
+        # print("---to distribution----: ", time.time() - actor_time)
         # print(action_probs)
         action = action_probs.sample()
 
