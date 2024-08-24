@@ -44,8 +44,55 @@ def rsi(data):
     return rsi_out
 
 
-def macd(data):
-    pass
+# This macd list will have the format of [ema_12, ema_26, macd, signal]
+def macd(data, macd_pre):
+    mac_together = []
+    macd_cur = []
+    multi_12 = 2 / 13
+    multi_26 = 2 / 27
+    multi_9 = 2 / 10
+    if len(macd_pre) == 0:
+        sma_12 = []
+        sma_26 = []
+        ema_12 = []
+        ema_26 = []
+        for i in range(len(data)):
+            if i > 12:
+                # sma_12.append(data[i][3])
+                avg = sum(sma_12) / len(sma_12)
+                if i == 13:
+                    calc = data[i][3]*multi_12 + avg*(1-multi_12)
+                else:
+                    calc = data[i][3]*multi_12 + ema_12[-1]*(1-multi_12)
+                ema_12.append(calc)
+            else:
+                sma_12.append(data[i][3])
+            if i > 26:
+                avg = sum(sma_26)/len(sma_26)
+                if i == 27:
+                    calc = data[i][3]*multi_26 + avg*(1-multi_26)
+                else:
+                    calc = data[i][3]*multi_26 + ema_26[-1]*(1-multi_26)
+                ema_26.append(calc)
+                macd_cur.append(ema_12[-1] - ema_26[-1])
+                if len(macd_cur) > 9:
+                    if len(macd_cur) == 10:
+                        avg = sum(macd_cur[:-1])/len(macd_cur[:-1])
+                        calc = macd_cur[-1]*multi_9 + avg*(1-multi_9)
+                    else:
+                        calc = macd_cur[-1]*multi_9 + mac_together[-1][-1]*(1-multi_9)
+                    mac_together.append([ema_12, ema_26, macd_cur[-1], calc])
+            else:
+                sma_26.append(data[i][3])
+    else:
+        for i in data:
+            ema_12_cur = data[i][3]*multi_12 + macd_pre[-1][0]*(1-multi_12)
+            ema_26_cur = data[i][3]*multi_26 + macd_pre[-1][1]*(1-multi_26)
+            macd_calc = ema_12_cur - ema_26_cur
+            signal = macd_calc*multi_9 + macd_pre[-1][2]*(1-multi_9)
+            # macd_cur.append(data[i][3])
+            mac_together.append([ema_12_cur, ema_26_cur, macd_calc, signal])
+    return mac_together
 
 
 def order_block(data, obs):
@@ -62,6 +109,7 @@ def fvg(data):
             fvgs.append([data[i][1], data[i+2][2]])
         elif data[i][1] > data[i+2][2]:
             fvgs.append([data[i+2][1], data[i][1]])
+    return fvgs
 
 
 class EnviroTraining:
