@@ -48,12 +48,20 @@ def macd(data):
     pass
 
 
-def order_block(data):
-    pass
+def order_block(data, obs):
+    for i in range(len(data)):
+        pass
 
 
 def fvg(data):
-    pass
+    fvgs = []
+    for i in range(len(data)):
+        if i + 2 >= len(data):
+            break
+        if data[i][1] < data[i+2][2]:
+            fvgs.append([data[i][1], data[i+2][2]])
+        elif data[i][1] > data[i+2][2]:
+            fvgs.append([data[i+2][1], data[i][1]])
 
 
 class EnviroTraining:
