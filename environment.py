@@ -95,10 +95,32 @@ def macd(data, macd_pre):
     return mac_together
 
 
-def order_block(data, obs):
+# ohlc
+def order_block(data):
+    obs = []
     for i in range(len(data)):
-        pass
+        if i == 0:
+            pass
+        if i == len(data) - 1:
+            break
 
+        # for lows so the order block will be a down close candle
+        if data[i][2] < data[i+1][2] and data[i][2] < data[i-1][2]:
+            if data[i-1][0] > data[i-1][3]:
+                obs.append(data[i-1][0])
+            elif data[i][0] < data[i][3]:
+                obs.append(data[i][0])
+            elif data[i+1][0] > data[i+1][3]:
+                obs.append(data[i+1][0])
+        # for highs so the order block will be an up close candle
+        if data[i][3] > data[i-1][3] and data[i][3] > data[i-1][3]:
+            if data[i-1][0] < data[i-1][3]:
+                obs.append(data[i-1][0])
+            elif data[i][0] < data[i][3]:
+                obs.append(data[i][0])
+            elif data[i+1][0] < data[i+1][3]:
+                obs.append(data[i+1][0])
+    return obs
 
 def fvg(data):
     fvgs = []
