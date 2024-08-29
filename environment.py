@@ -122,6 +122,7 @@ def order_block(data):
                 obs.append(data[i+1][0])
     return obs
 
+
 def fvg(data):
     fvgs = []
     for i in range(len(data)):
@@ -329,7 +330,52 @@ class EnviroTraining:
         self.current_time_step += 1
         return [env_outputs, reward_real, reward_unreal]
 
-# a = EnviroTraining('NAS100_USD', '2004-01-06', '2004-02-01')
+
+# import matplotlib.pyplot as plt
+# # a = EnviroTraining('NAS100_USD', '2024-01-08', '2024-02-08')
+# with open('NAS100_USD.json', 'r') as read:
+#     prices = pd.DataFrame(json.load(read), columns=['open', 'close', 'high', 'low', 'datetime'])
+#     prices = prices.iloc[:30]
+#     prices['datetime'] = prices['datetime'].str[:19]
+#     prices.set_index('datetime', inplace=True)
+#
+# # prices = pd.DataFrame({'open': [36, 56, 45, 29, 65, 66, 67],
+# #                              'close': [29, 72, 11, 4, 23, 68, 45],
+# #                              'high': [42, 73, 61, 62, 73, 56, 55],
+# #                              'low': [22, 11, 10, 2, 13, 24, 25]},
+# #                             index=pd.date_range(
+# #                               "2021-11-10", periods=7, freq="d"))
+# # print(prices)
+# plt.figure()
+#
+# # define width of candlestick elements
+# width = .3
+# width2 = .03
+#
+# # define up and down prices
+# up = prices[prices.close >= prices.open]
+# down = prices[prices.close < prices.open]
+#
+# # define colors to use
+# col1 = 'green'
+# col2 = 'red'
+#
+# # plot up prices
+# plt.bar(up.index, up.close-up.open, width, bottom=up.open, color=col1)
+# plt.bar(up.index,up.high-up.close,width2,bottom=up.close,color=col1)
+# plt.bar(up.index,up.low-up.open,width2,bottom=up.open,color=col1)
+#
+# # plot down prices
+# plt.bar(down.index,down.close-down.open,width,bottom=down.open,color=col2)
+# plt.bar(down.index,down.high-down.open,width2,bottom=down.open,color=col2)
+# plt.bar(down.index,down.low-down.close,width2,bottom=down.close,color=col2)
+#
+# # rotate x-axis tick labels
+# plt.xticks(rotation=45, ha='right')
+#
+# # display candlestick chart
+# plt.show()
+
 
 # print(a.step('hold'))
 
