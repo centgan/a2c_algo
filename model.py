@@ -127,9 +127,11 @@ class AgentSep:
             # state_val_, _ = self.actor_critic.call(state_)
             state_val = tf.squeeze(state_val)
             state_val_ = tf.squeeze(state_val_)
-
+            # print(state_val)
+            # print(state_val[0])
             action_probs = tfp.distributions.Categorical(probs=probs)
             log_prob = action_probs.log_prob(state_val)
+            # print('log probs: ' + str(log_prob))
 
             delta = reward + self.gamma * state_val_ - state_val
             actor_loss = -log_prob * delta

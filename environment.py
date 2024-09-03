@@ -16,6 +16,8 @@ ACCOUNT_ID = "101-002-25776676-003"
 TOKEN = "d8e783a23ff8bab21476e440b3d578ef-207d5f7676d7d82839a50d4907b3d6e6"
 
 
+# somehow may also need to get in the economic candle in here it also might be a good idea to just iterate through
+# the entire training time and just pre pull the data rather than requesting and then working.
 # Data should be the previous 60 days worth of data with the most recent being at the end of the list
 def rsi(data):
     # Check if this works
