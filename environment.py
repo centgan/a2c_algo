@@ -353,7 +353,7 @@ train_end = train_start
 instrument = 'NAS100_USD'
 header = {'Authorization': 'Bearer ' + TOKEN}
 hist_path = f'/v3/accounts/{ACCOUNT_ID}/instruments/' + instrument + '/candles'
-first = False
+counter = 0
 while train_end != train_final_end:
     train_end = train_start + timedelta(hours=6)
     from_time = time.mktime(pd.to_datetime(train_start).timetuple())
@@ -378,9 +378,10 @@ while train_end != train_final_end:
         train_start = train_end
         continue
     try:
-        replace = into_json['candles'][0].copy()
-        replace['time'] = str(datetime.strftime(train_start + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
-        into_json['candles'].insert(0, replace)
+        if str(into_json['candles'][0]['time'][:19]) != str((train_start + timedelta(hours=5)).strftime('%Y-%m-%dT%H:%M:%S')):
+            replace = into_json['candles'][0].copy()
+            replace['time'] = str(datetime.strftime(train_start + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
+            into_json['candles'].insert(0, replace)
     except IndexError:
         print(train_start, train_end)
         print(into_json)
@@ -397,12 +398,11 @@ while train_end != train_final_end:
                                                 '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
             n = (future_datetime - cur_datetime) / timedelta(seconds=5) - 1
             opening_price = float(candle['mid']['o'])
-            high_price = float(candle['mid']['h'])
-            low_price = float(candle['mid']['l'])
-            close_price = float(candle['mid']['c'])
+            high_price = 0 if opening_price - float(candle['mid']['h']) == 0 else round(opening_price - float(candle['mid']['h']), 1)
+            low_price = 0 if opening_price - float(candle['mid']['l']) == 0 else round(opening_price - float(candle['mid']['l']), 1)
+            close_price = 0 if opening_price - float(candle['mid']['c']) == 0 else round(opening_price - float(candle['mid']['c']), 1)
 
-            repeated = [opening_price, opening_price-high_price, opening_price-low_price,
-                        opening_price-close_price, str(cur_datetime)]
+            repeated = [opening_price, high_price, low_price, close_price, str(cur_datetime)]
 
             candles.append(repeated.copy())
 
