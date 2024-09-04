@@ -78,6 +78,7 @@ if __name__ == '__main__':
                 pass
             else:
                 executor.submit(training, INSTRUMENT, res[idx-1], i, idx)
+
     # env = EnviroTraining('NAS100_USD', '2011-01-03', '2020-02-03')
     # # agent = Agent(alpha=0.0001, action_size=3)
     # agent = AgentSep(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.3, action_size=3)
