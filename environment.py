@@ -344,79 +344,84 @@ class EnviroTraining:
             json.dump(self.orders, write, indent=4)
         self.current_time_step += 1
         return [env_outputs, reward_real, reward_unreal]
-#
-#
-# train_start = '2011-01-03 00:00:00'
-# train_end = '2020-02-03 00:00:00'
-# train_start = datetime.strptime(train_start, "%Y-%m-%d %H:%M:%S")
-# train_final_end = datetime.strptime(train_end, "%Y-%m-%d %H:%M:%S")
-# train_end = train_start
-# instrument = 'NAS100_USD'
-# header = {'Authorization': 'Bearer ' + TOKEN}
-# hist_path = f'/v3/accounts/{ACCOUNT_ID}/instruments/' + instrument + '/candles'
-# first = False
-# while train_end != train_final_end:
-#     train_end = train_start + timedelta(hours=6)
-#     from_time = time.mktime(pd.to_datetime(train_start).timetuple())
-#     to_time = time.mktime(pd.to_datetime(train_end).timetuple())
-#
-#     # print(train_start.hour, train_start.weekday(), train_end.hour, train_end.weekday())
-#     if train_end.weekday() == 5 and train_end.hour == 0 and train_start.weekday() == 4 and train_start.hour == 18:
-#         train_start = train_end
-#         continue
-#     if train_end.weekday() == 5 or train_start.weekday() == 5:
-#         train_start = train_end
-#         continue
-#     if train_end.weekday() == 6:
-#         if train_end.hour == 6 or train_end.hour == 12 or train_end.hour == 18:
-#             train_start = train_end
-#             continue
-#     # print('ran')
-#     query = {'from': str(from_time), 'to': str(to_time), 'granularity': 'S5'}
-#     response = requests.get('https://' + API + hist_path, headers=header, params=query)
-#     into_json = response.json()
-#     if len(into_json['candles']) == 0:
-#         train_start = train_end
-#         continue
-#     try:
-#         replace = into_json['candles'][0].copy()
-#         replace['time'] = str(datetime.strftime(train_start + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
-#         into_json['candles'].insert(0, replace)
-#     except IndexError:
-#         print(train_start, train_end)
-#         print(into_json)
-#
-#     replace = into_json['candles'][-1].copy()
-#     replace['time'] = str(datetime.strftime(train_end + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
-#     into_json['candles'].append(replace)
-#
-#     candles = []
-#     for i, candle in enumerate(into_json['candles']):
-#         cur_datetime = datetime.strptime(candle['time'][:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
-#         if i != len(into_json['candles']) - 1:
-#             future_datetime = datetime.strptime(into_json['candles'][i + 1]['time'][:19],
-#                                                 '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
-#             n = (future_datetime - cur_datetime) / timedelta(seconds=5) - 1
-#             repeated = [float(candle['mid']['o']), float(candle['mid']['h']), float(candle['mid']['l']),
-#                         float(candle['mid']['c']), str(cur_datetime)]
-#
-#             candles.append(repeated.copy())
-#
-#             for j in range(int(n)):
-#                 repeated[-1] = str(cur_datetime + timedelta(seconds=5 * (j + 1)))
-#                 candles.append(repeated.copy())
-#
-#     with open('full_training_data.json', 'r') as read:
-#         pre = json.load(read)
-#     with open('full_training_data.json', 'w') as write:
-#         pre.extend(candles)
-#         json.dump(pre, write, indent=4)
-#     # if not first:
-#     #     print(pre)
-#     #     pre.extend(candles)
-#     #     print(pre)
-#     #     first = True
-#     train_start = train_end
+
+train_start = '2011-01-03 00:00:00'
+train_end = '2020-02-03 00:00:00'
+train_start = datetime.strptime(train_start, "%Y-%m-%d %H:%M:%S")
+train_final_end = datetime.strptime(train_end, "%Y-%m-%d %H:%M:%S")
+train_end = train_start
+instrument = 'NAS100_USD'
+header = {'Authorization': 'Bearer ' + TOKEN}
+hist_path = f'/v3/accounts/{ACCOUNT_ID}/instruments/' + instrument + '/candles'
+first = False
+while train_end != train_final_end:
+    train_end = train_start + timedelta(hours=6)
+    from_time = time.mktime(pd.to_datetime(train_start).timetuple())
+    to_time = time.mktime(pd.to_datetime(train_end).timetuple())
+
+    # print(train_start.hour, train_start.weekday(), train_end.hour, train_end.weekday())
+    if train_end.weekday() == 5 and train_end.hour == 0 and train_start.weekday() == 4 and train_start.hour == 18:
+        train_start = train_end
+        continue
+    if train_end.weekday() == 5 or train_start.weekday() == 5:
+        train_start = train_end
+        continue
+    if train_end.weekday() == 6:
+        if train_end.hour == 6 or train_end.hour == 12 or train_end.hour == 18:
+            train_start = train_end
+            continue
+    # print('ran')
+    query = {'from': str(from_time), 'to': str(to_time), 'granularity': 'S5'}
+    response = requests.get('https://' + API + hist_path, headers=header, params=query)
+    into_json = response.json()
+    if len(into_json['candles']) == 0:
+        train_start = train_end
+        continue
+    try:
+        replace = into_json['candles'][0].copy()
+        replace['time'] = str(datetime.strftime(train_start + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
+        into_json['candles'].insert(0, replace)
+    except IndexError:
+        print(train_start, train_end)
+        print(into_json)
+
+    replace = into_json['candles'][-1].copy()
+    replace['time'] = str(datetime.strftime(train_end + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
+    into_json['candles'].append(replace)
+
+    candles = []
+    for i, candle in enumerate(into_json['candles']):
+        cur_datetime = datetime.strptime(candle['time'][:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
+        if i != len(into_json['candles']) - 1:
+            future_datetime = datetime.strptime(into_json['candles'][i + 1]['time'][:19],
+                                                '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
+            n = (future_datetime - cur_datetime) / timedelta(seconds=5) - 1
+            opening_price = float(candle['mid']['o'])
+            high_price = float(candle['mid']['h'])
+            low_price = float(candle['mid']['l'])
+            close_price = float(candle['mid']['c'])
+
+            repeated = [opening_price, opening_price-high_price, opening_price-low_price,
+                        opening_price-close_price, str(cur_datetime)]
+
+            candles.append(repeated.copy())
+
+            for j in range(int(n)):
+                # repeated[-1] = str(cur_datetime + timedelta(seconds=5 * (j + 1)))
+                repeated[-1] = str(5 * (j + 1))
+                candles.append(repeated.copy())
+
+    with open('full_training_data.json', 'r') as read:
+        pre = json.load(read)
+    with open('full_training_data.json', 'w') as write:
+        pre.extend(candles)
+        json.dump(pre, write, indent=4)
+    # if not first:
+    #     print(pre)
+    #     pre.extend(candles)
+    #     print(pre)
+    #     first = True
+    train_start = train_end
 
 
 
