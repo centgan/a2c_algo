@@ -390,6 +390,8 @@ while train_end != train_final_end:
     replace['time'] = str(datetime.strftime(train_end + timedelta(hours=5), '%Y-%m-%dT%H:%M:%S'))
     into_json['candles'].append(replace)
 
+    first_opening_price = float(into_json['candles'][0]['mid']['o'])
+
     candles = []
     for i, candle in enumerate(into_json['candles']):
         cur_datetime = datetime.strptime(candle['time'][:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
@@ -397,20 +399,39 @@ while train_end != train_final_end:
             future_datetime = datetime.strptime(into_json['candles'][i + 1]['time'][:19],
                                                 '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc).astimezone(est)
             n = (future_datetime - cur_datetime) / timedelta(seconds=5) - 1
-            opening_price = float(candle['mid']['o'])
-            high_price = 0 if opening_price - float(candle['mid']['h']) == 0 else round(opening_price - float(candle['mid']['h']), 1)
-            low_price = 0 if opening_price - float(candle['mid']['l']) == 0 else round(opening_price - float(candle['mid']['l']), 1)
-            close_price = 0 if opening_price - float(candle['mid']['c']) == 0 else round(opening_price - float(candle['mid']['c']), 1)
+            if i == 0:
+                opening_price = float(candle['mid']['o'])
+            else:
+                opening_price = 0 if first_opening_price - float(candle['mid']['o']) == 0 else round(first_opening_price - float(candle['mid']['o']), 1)
+            place_holder = float(candle['mid']['o'])
+            high_price = 0 if place_holder - float(candle['mid']['h']) == 0 else round(place_holder - float(candle['mid']['h']), 1)
+            low_price = 0 if place_holder - float(candle['mid']['l']) == 0 else round(place_holder - float(candle['mid']['l']), 1)
+            close_price = 0 if place_holder - float(candle['mid']['c']) == 0 else round(place_holder - float(candle['mid']['c']), 1)
 
-            repeated = [opening_price, high_price, low_price, close_price, str(cur_datetime)]
-
+            # repeated = [opening_price, high_price, low_price, close_price, str(cur_datetime)]
+            # repeated = [place_holder, high_price, low_price, close_price, str(cur_datetime)]
+            if i == 0:
+                repeated = [opening_price, high_price, low_price, close_price, str(cur_datetime)]
+            else:
+                repeated = [opening_price, high_price, low_price, close_price]
+                # if repeated == candles[-1]:
+                #     if str(candles[-1][-1]).find('_x') == -1:
+                #         candles[-1][-1] = str(candles[-1][-1]) + '_x2'
+                #     else:
+                #         multi = int(str(candles[-1][-1]).split('_x')[-1])
+                #         candles[-1][-1] = str(candles[-1][-1]) + '_x' + str(multi + 1)
+            # this means that it is multiplied by the number so if it is 15 then there should be a total of 15 of those
+            # entries including the original
+            if n != 0:
+                repeated[3] = str(repeated[3])+'_x'+str(round(n+1))
             candles.append(repeated.copy())
 
-            for j in range(int(n)):
-                # repeated[-1] = str(cur_datetime + timedelta(seconds=5 * (j + 1)))
-                repeated[-1] = str(5 * (j + 1))
-                candles.append(repeated.copy())
-
+            # for j in range(int(n)):
+            #     # repeated[-1] = str(cur_datetime + timedelta(seconds=5 * (j + 1)))
+            #     repeated = [0, 0, 0, 0, str(5 * (j + 1))]
+            #     # repeated = [0, 0, 0, 0]
+            #     # repeated[-1] = str(5 * (j + 1))
+            #     candles.append(repeated.copy())
     with open('full_training_data.json', 'r') as read:
         pre = json.load(read)
     with open('full_training_data.json', 'w') as write:
