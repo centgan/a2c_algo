@@ -373,7 +373,13 @@ while train_end != train_final_end:
             continue
     # print('ran')
     query = {'from': str(from_time), 'to': str(to_time), 'granularity': 'S5'}
-    response = requests.get('https://' + API + hist_path, headers=header, params=query)
+    try:
+        response = requests.get('https://' + API + hist_path, headers=header, params=query)
+    except:
+        with open('full_training_data.json', 'w') as write:
+            json.dump(full_data, write)
+        time.sleep(10)
+        response = requests.get('https://' + API + hist_path, headers=header, params=query)
     into_json = response.json()
     if len(into_json['candles']) == 0:
         train_start = train_end
