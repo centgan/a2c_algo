@@ -376,6 +376,7 @@ while train_end != train_final_end:
     try:
         response = requests.get('https://' + API + hist_path, headers=header, params=query)
     except:
+        full_data.extend([train_start, train_end, 'failed on this data pull'])
         with open('full_training_data.json', 'w') as write:
             json.dump(full_data, write)
         time.sleep(10)
