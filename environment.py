@@ -351,6 +351,16 @@ def uncompress(data):
         if len(j) == 5:
             start_opening = j[0]
             start_date = j[-1]
+        index_multi = str(j[3]).find('_x')
+        if index_multi != 0:
+            multiplier = str(j[3]).split('_x')[-1]
+            if len(j) == 5:
+                j[0] = start_opening
+            else:
+                j[0] = j[0] + start_opening
+            j[1] = j[0] + j[1]
+            j[2] = j[0] + j[2]
+            j[3] = j[0] + float(str(j[3]).split('_x')[0])
 
     return
 
@@ -510,6 +520,7 @@ while train_end != train_final_end:
     #     first = True
     pre_train_start = train_start
     if pre_train_start.year != train_start.year:
+        print(f'Writing to {pre_train_start.year} year')
         with open(f'full_training_data_{pre_train_start.year}.json', 'w') as write:
             json.dump(full_data, write)
         full_data = []
