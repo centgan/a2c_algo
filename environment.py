@@ -346,25 +346,6 @@ class EnviroTraining:
         return [env_outputs, reward_real, reward_unreal]
 
 
-def uncompress(data):
-    for j in data:
-        if len(j) == 5:
-            start_opening = j[0]
-            start_date = j[-1]
-        index_multi = str(j[3]).find('_x')
-        if index_multi != 0:
-            multiplier = str(j[3]).split('_x')[-1]
-            if len(j) == 5:
-                j[0] = start_opening
-            else:
-                j[0] = j[0] + start_opening
-            j[1] = j[0] + j[1]
-            j[2] = j[0] + j[2]
-            j[3] = j[0] + float(str(j[3]).split('_x')[0])
-
-    return
-
-
 class EnviroLocalTraining:
     def __init__(self, instrument, train_start, train_end, train_path):
         self.instrument = instrument
@@ -372,8 +353,9 @@ class EnviroLocalTraining:
         self.train_start = datetime.strptime(train_start, "%Y-%m-%d")
         # self.train_end = self.train_start + timedelta(hours=6)
         self.current_time_step = 60
+        self.start_time_step = 0
         self.current_year = self.train_start.year
-        self.max_data = 4320
+        # self.max_data = 4320
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
 
         self.logger = logging.getLogger()
@@ -382,6 +364,8 @@ class EnviroLocalTraining:
         self.logger.info(
             f'Start of new Training from {self.train_start} to {self.train_end} on {self.instrument}')
 
+        self.start_opening = 0
+        self.start_date = ""
         self.year_data = self.get_data()
         # self.full_data = self.uncompress()
         self.logger.info(f'Data pull from {self.train_start} to {self.train_end}')
@@ -404,10 +388,46 @@ class EnviroLocalTraining:
 
     def just_in_time(self):
         returning_data = []
-        i = 1
-        while i <= self.current_time_step:
-            returning_data.extend(uncompress(self.year_data[i]))
-            i += 1
+        while self.start_time_step <= self.current_time_step-1:
+            returning_data.extend(self.uncompress(self.year_data[self.start_time_step]))
+            self.start_time_step += 1
+
+    def uncompress(self, data):
+        ret_list = data.copy()
+        if len(data) == 5:
+            self.start_opening = data[0]
+            self.start_date = data[-1]
+        index_multi = str(data[3]).find('_x')
+        if index_multi != -1:
+            multiplier = int(str(data[3]).split('_x')[-1])
+            if len(data) == 5:
+                ret_list[0] = self.start_opening
+            else:
+                ret_list[0] = data[0] + self.start_opening
+            ret_list[1] = data[0] + ret_list[1]
+            ret_list[2] = data[0] + ret_list[2]
+            ret_list[3] = data[0] + float(str(ret_list[3]).split('_x')[0])
+
+            full = [ret_list] * multiplier
+            for index, item in enumerate(full):
+                if len(item) == 5:
+                    if index == 0:
+                        continue
+                    else:
+                        item[-1] = self.start_date + timedelta(seconds=5*(index+self.start_time_step))
+                else:
+                    item.append(self.start_date + timedelta(seconds=5*(index+self.start_time_step)))
+        else:
+            if len(data) == 5:
+                ret_list[0] = self.start_opening
+            else:
+                ret_list[0] = self.start_opening + data[0]
+            ret_list[1] = data[0] + ret_list[1]
+            ret_list[2] = ret_list[0] + ret_list[2]
+            ret_list[3] = ret_list[0] + ret_list[3]
+
+            return ret_list
+
 
 
 train_start = '2011-01-03 00:00:00'
@@ -518,13 +538,13 @@ while train_end != train_final_end:
     #     pre.extend(candles)
     #     print(pre)
     #     first = True
-    pre_train_start = train_start
     if pre_train_start.year != train_start.year:
         print(f'Writing to {pre_train_start.year} year')
         with open(f'full_training_data_{pre_train_start.year}.json', 'w') as write:
             json.dump(full_data, write)
         full_data = []
     train_start = train_end
+    pre_train_start = train_start
 
 with open(f'full_training_data_{train_start.year}.json', 'w') as write:
     json.dump(full_data, write)
