@@ -354,6 +354,7 @@ instrument = 'NAS100_USD'
 header = {'Authorization': 'Bearer ' + TOKEN}
 hist_path = f'/v3/accounts/{ACCOUNT_ID}/instruments/' + instrument + '/candles'
 counter = 0
+full_data = []
 while train_end != train_final_end:
     train_end = train_start + timedelta(hours=6)
     from_time = time.mktime(pd.to_datetime(train_start).timetuple())
@@ -433,11 +434,12 @@ while train_end != train_final_end:
             #     # repeated[-1] = str(5 * (j + 1))
             #     candles.append(repeated.copy())
     print(train_start, train_end)
-    with open('full_training_data.json', 'r') as read:
-        pre = json.load(read)
-    with open('full_training_data.json', 'w') as write:
-        pre.extend(candles)
-        json.dump(pre, write, indent=4)
+    full_data.extend(candles)
+    # with open('full_training_data.json', 'r') as read:
+    #     pre = json.load(read)
+    # with open('full_training_data.json', 'w') as write:
+    #     pre.extend(candles)
+    #     json.dump(pre, write, indent=4)
     # if not first:
     #     print(pre)
     #     pre.extend(candles)
@@ -445,8 +447,8 @@ while train_end != train_final_end:
     #     first = True
     train_start = train_end
 
-
-
+with open('full_training_data.json', 'w') as write:
+    json.dump(full_data, write)
 # import matplotlib.pyplot as plt
 # # a = EnviroTraining('NAS100_USD', '2024-01-08', '2024-02-08')
 # with open('NAS100_USD.json', 'r') as read:
