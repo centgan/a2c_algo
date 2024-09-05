@@ -345,6 +345,61 @@ class EnviroTraining:
         self.current_time_step += 1
         return [env_outputs, reward_real, reward_unreal]
 
+
+def uncompress(data):
+    for j in data:
+        if len(j) == 5:
+            start_opening = j[0]
+            start_date = j[-1]
+
+    return
+
+
+class EnviroLocalTraining:
+    def __init__(self, instrument, train_start, train_end, train_path):
+        self.instrument = instrument
+        # ensure that datetime formats are in %Y-%m-% this format and assumed to be at midnight
+        self.train_start = datetime.strptime(train_start, "%Y-%m-%d")
+        # self.train_end = self.train_start + timedelta(hours=6)
+        self.current_time_step = 60
+        self.current_year = self.train_start.year
+        self.max_data = 4320
+        self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
+
+        self.logger = logging.getLogger()
+        logging.basicConfig(filename='log.log', level=logging.INFO,
+                            format='%(asctime)s  %(levelname)s: %(message)s')
+        self.logger.info(
+            f'Start of new Training from {self.train_start} to {self.train_end} on {self.instrument}')
+
+        self.year_data = self.get_data()
+        # self.full_data = self.uncompress()
+        self.logger.info(f'Data pull from {self.train_start} to {self.train_end}')
+
+        # where orders are logged in the format {'open': [{datetime, entry_price, order}], 'closed': [{datetime,
+        # entry_price, close_price, order}]}
+        self.orders = {'open': [], 'closed': []}
+        with open('orders.json', 'w') as f:
+            f.truncate()
+        self.done = False
+
+        # Observation space is here and can try combinations like retail: MACD + RSI, or smc: Order Blocks + FVG both
+        # with time and the past 60 candles of information. There are other combos that retail use that I can try
+        # out as well
+        self.env_out = [[x[-2] for x in self.train_data[:self.current_time_step]]]
+
+    def get_data(self):
+        with open(f'full_training_data_{self.current_year}.json', 'r') as f:
+            return json.load(f)
+
+    def just_in_time(self):
+        returning_data = []
+        i = 1
+        while i <= self.current_time_step:
+            returning_data.extend(uncompress(self.year_data[i]))
+            i += 1
+
+
 train_start = '2011-01-03 00:00:00'
 train_end = '2020-02-03 00:00:00'
 train_start = datetime.strptime(train_start, "%Y-%m-%d %H:%M:%S")
@@ -355,6 +410,7 @@ header = {'Authorization': 'Bearer ' + TOKEN}
 hist_path = f'/v3/accounts/{ACCOUNT_ID}/instruments/' + instrument + '/candles'
 counter = 0
 full_data = []
+pre_train_start = train_start
 while train_end != train_final_end:
     train_end = train_start + timedelta(hours=6)
     from_time = time.mktime(pd.to_datetime(train_start).timetuple())
@@ -376,6 +432,7 @@ while train_end != train_final_end:
     try:
         response = requests.get('https://' + API + hist_path, headers=header, params=query)
     except:
+        full_data.extend([train_start, train_end, 'failed on this data pull'])
         with open('full_training_data.json', 'w') as write:
             json.dump(full_data, write)
         time.sleep(10)
@@ -451,9 +508,14 @@ while train_end != train_final_end:
     #     pre.extend(candles)
     #     print(pre)
     #     first = True
+    pre_train_start = train_start
+    if pre_train_start.year != train_start.year:
+        with open(f'full_training_data_{pre_train_start.year}.json', 'w') as write:
+            json.dump(full_data, write)
+        full_data = []
     train_start = train_end
 
-with open('full_training_data.json', 'w') as write:
+with open(f'full_training_data_{train_start.year}.json', 'w') as write:
     json.dump(full_data, write)
 # import matplotlib.pyplot as plt
 # # a = EnviroTraining('NAS100_USD', '2024-01-08', '2024-02-08')
