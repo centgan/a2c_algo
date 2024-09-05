@@ -432,6 +432,7 @@ while train_end != train_final_end:
             #     # repeated = [0, 0, 0, 0]
             #     # repeated[-1] = str(5 * (j + 1))
             #     candles.append(repeated.copy())
+    print(train_start, train_end)
     with open('full_training_data.json', 'r') as read:
         pre = json.load(read)
     with open('full_training_data.json', 'w') as write:
