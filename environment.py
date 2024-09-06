@@ -445,7 +445,6 @@ while train_end != train_final_end:
     train_end = train_start + timedelta(hours=6)
     from_time = time.mktime(pd.to_datetime(train_start).timetuple())
     to_time = time.mktime(pd.to_datetime(train_end).timetuple())
-
     # print(train_start.hour, train_start.weekday(), train_end.hour, train_end.weekday())
     if train_end.weekday() == 5 and train_end.hour == 0 and train_start.weekday() == 4 and train_start.hour == 18:
         train_start = train_end
