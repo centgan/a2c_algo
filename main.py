@@ -51,7 +51,8 @@ def training(instrument, start_train, end_train, core_num):
         # print(str(balance) + ' running on core number: ' + str(core_num))
         if balance != pre_balance:
             print(str(balance) + ' running on core number: ' + str(core_num))
-        pre_balance = round(balance, 1)
+        balance = round(balance, 1)
+        pre_balance = balance
         # print(balance)
         if balance > highest_balance and not LOAD_CHECK:
             highest_balance = balance
