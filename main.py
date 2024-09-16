@@ -48,12 +48,10 @@ def training(instrument, start_train, end_train, core_num):
             agent.learn(observation, reward_unreal, observation_)
         observation = observation_
 
-        print(str(balance) + ' running on core number: ' + str(core_num))
-        # if len(reward_history) == 0:
-        #     print('balance')
-        # if balance != pre_balance:
-        #     print(str(balance) + ' running on core number: ' + str(core_num))
-        pre_balance = balance
+        # print(str(balance) + ' running on core number: ' + str(core_num))
+        if balance != pre_balance:
+            print(str(balance) + ' running on core number: ' + str(core_num))
+        pre_balance = round(balance, 1)
         # print(balance)
         if balance > highest_balance and not LOAD_CHECK:
             highest_balance = balance

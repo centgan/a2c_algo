@@ -81,7 +81,7 @@ class CriticNetwork(keras.Model):
             LeakyReLU(negative_slope=0.05),
             LSTM(self.dims_2),
             LeakyReLU(negative_slope=0.05),
-            Dense(1, activation=None),
+            Dense(1, activation='tanh'),
         ])
 
     def call(self, state):

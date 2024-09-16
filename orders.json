@@ -1,431 +1,53 @@
 {
-    "open": [
-        {
-            "datetime": "2013-04-11 00:32:50-04:00",
-            "entry_price": 2852.0,
-            "order": "buy"
-        }
-    ],
+    "open": [],
     "closed": [
         {
-            "datetime": "2013-04-11 00:08:35-04:00",
-            "entry_price": 2850.8,
+            "datetime": "2011-01-03 00:05:00-05:00",
+            "entry_price": 2228.4,
+            "order": "sell",
+            "close_price": 2228.2
+        },
+        {
+            "datetime": "2011-01-03 00:05:15-05:00",
+            "entry_price": 2228.2,
             "order": "buy",
-            "close_price": 2850.8
+            "close_price": 2228.4
         },
         {
-            "datetime": "2013-04-11 00:08:50-04:00",
-            "entry_price": 2850.8,
-            "order": "sell",
-            "close_price": 2850.8
-        },
-        {
-            "datetime": "2013-04-11 00:09:05-04:00",
-            "entry_price": 2850.8,
+            "datetime": "2011-01-03 00:05:30-05:00",
+            "entry_price": 2228.4,
             "order": "buy",
-            "close_price": 2850.8
+            "close_price": 2228.2
         },
         {
-            "datetime": "2013-04-11 00:09:25-04:00",
-            "entry_price": 2850.8,
-            "order": "sell",
-            "close_price": 2850.8
-        },
-        {
-            "datetime": "2013-04-11 00:09:45-04:00",
-            "entry_price": 2850.8,
-            "order": "sell",
-            "close_price": 2850.8
-        },
-        {
-            "datetime": "2013-04-11 00:10:15-04:00",
-            "entry_price": 2850.8,
-            "order": "sell",
-            "close_price": 2850.8
-        },
-        {
-            "datetime": "2013-04-11 00:10:25-04:00",
-            "entry_price": 2850.8,
+            "datetime": "2011-01-03 00:05:50-05:00",
+            "entry_price": 2228.2,
             "order": "buy",
-            "close_price": 2850.8
+            "close_price": 2228.2
         },
         {
-            "datetime": "2013-04-11 00:11:00-04:00",
-            "entry_price": 2850.8,
+            "datetime": "2011-01-03 00:06:05-05:00",
+            "entry_price": 2228.2,
             "order": "sell",
-            "close_price": 2850.8
+            "close_price": 2227.9
         },
         {
-            "datetime": "2013-04-11 00:11:15-04:00",
-            "entry_price": 2850.8,
+            "datetime": "2011-01-03 00:06:45-05:00",
+            "entry_price": 2227.9,
             "order": "sell",
-            "close_price": 2851.0
+            "close_price": 2227.9
         },
         {
-            "datetime": "2013-04-11 00:11:30-04:00",
-            "entry_price": 2851.0,
+            "datetime": "2011-01-03 00:07:10-05:00",
+            "entry_price": 2227.9,
+            "order": "sell",
+            "close_price": 2227.9
+        },
+        {
+            "datetime": "2011-01-03 00:07:25-05:00",
+            "entry_price": 2227.9,
             "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:11:40-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:11:55-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:12:25-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:12:55-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:13:20-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:13:35-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:14:00-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:14:15-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:15:20-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:15:40-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:16:20-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:16:50-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:17:05-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:17:40-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:17:55-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:18:10-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:18:30-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:18:40-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:18:50-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:19:00-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:19:20-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:19:50-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:20:20-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:20:30-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:20:45-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:21:15-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:21:30-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:21:45-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:21:55-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:22:15-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:22:30-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:23:10-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:24:05-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:24:15-04:00",
-            "entry_price": 2851.0,
-            "order": "sell",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:24:55-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.0
-        },
-        {
-            "datetime": "2013-04-11 00:25:20-04:00",
-            "entry_price": 2851.0,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:25:50-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:26:10-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:26:20-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:26:35-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:26:45-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:26:55-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:27:20-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:27:30-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:27:40-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:27:50-04:00",
-            "entry_price": 2851.4,
-            "order": "buy",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:28:55-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:29:05-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:29:30-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.4
-        },
-        {
-            "datetime": "2013-04-11 00:30:00-04:00",
-            "entry_price": 2851.4,
-            "order": "sell",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:30:25-04:00",
-            "entry_price": 2851.8,
-            "order": "sell",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:30:40-04:00",
-            "entry_price": 2851.8,
-            "order": "sell",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:31:00-04:00",
-            "entry_price": 2851.8,
-            "order": "sell",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:31:10-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:31:25-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:31:35-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:31:50-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:32:05-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:32:15-04:00",
-            "entry_price": 2851.8,
-            "order": "sell",
-            "close_price": 2851.8
-        },
-        {
-            "datetime": "2013-04-11 00:32:35-04:00",
-            "entry_price": 2851.8,
-            "order": "buy",
-            "close_price": 2852.0
+            "close_price": 2227.9
         }
     ]
 }
