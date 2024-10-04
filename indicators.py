@@ -93,7 +93,12 @@
 #             fvgs.append([data[i + 2][1], data[i][1]])
 #     return fvgs
 
-
+# indicators should return with a constant length array
+# For the research paper method the first 60 entries consist of rsi and the next 60 consist of macd (for now forget
+# about trigger line)
+# For smt method consist of maybe last 5 OB+, next 5 are OB- next 5 are [fvg_low, fvg_high], 60 entries of economic
+# news where 0 is nothing, 1 is low impact, 2 is medium impact, 3 is high impact and the highest always takes precedence
+# ignore all day news?
 class Indicators:
     def __init__(self, data, rsi_flag=False, mac_flag=False, ob_flag=False, fvg_flag=False, news_flag=False):
         self.list_data = data
@@ -103,18 +108,30 @@ class Indicators:
         self.fvg_flag = fvg_flag
         self.news_flag = news_flag
 
-        self.rsi_last_values = []
-        self.mac_last_values = []
+        self.rsi_need = []
+        self.mac_need = []
 
-        self.ret = []
+        self.rsi_last_values = []
+        self.mac_last_values = [[], []]  # list of 2 items, the first is list of macd and the second is list of trigger
+        self.ob_up_last_values = []
+        self.ob_down_last_values = []
+        self.fvgs_up_last_values = []
+        self.fvgs_down_last_values = []
+
         if self.rsi_flag:
-            self.ret.append(self.rsi_init())
+            self.rsi_init()
         if self.mac_flag:
             self.mac_init()
-            print(self.mac_last_values)
+        if self.ob_flag:
+            self.ob_init()
+        if self.fvg_flag:
+            self.fvg_init()
+        if self.news_flag:
+            pass
 
-    def get_indicators(self):
-        pass
+    def get_indicators(self, cur_data):
+        self.list_data.pop(0)
+        self.list_data.append(cur_data)
 
     def rsi_init(self):
         working_range = 14
@@ -132,36 +149,36 @@ class Indicators:
         avg_up = sum(upward[:working_range]) / len(upward[:working_range])
         avg_down = sum(downward[:working_range]) / len(downward[:working_range])
 
-        rsi_out = []
         for i in range(working_range, len(self.list_data) - 1):
             avg_up = ((avg_up * (working_range - 1) + upward[i]) / working_range)
             avg_down = ((avg_down * (working_range - 1) + downward[i]) / working_range)
             rs = avg_up / avg_down
-            rsi_out.append(round(100 - (100 / (rs + 1)), 2))
-        self.rsi_last_values = [self.list_data[-1][-2], avg_up, avg_down]
+            self.rsi_last_values.append(round(100 - (100 / (rs + 1)), 2))
+        self.rsi_need = [avg_up, avg_down]
+        self.rsi_last_values = [0]*(60-len(self.rsi_last_values)) + self.rsi_last_values
 
-    def rsi(self, cur_data):
+    def rsi(self):
         working_range = 14
         upward = 0
         downward = 0
-        if cur_data[-2] > self.rsi_last_values[0]:
-            upward = cur_data[-2] - self.rsi_last_values[0]
+        if self.list_data[-1][-2] > self.list_data[-2][-2]:
+            upward = self.list_data[-1][-2] - self.list_data[-2][-2]
         else:
-            downward = self.rsi_last_values[0] - cur_data[-2]
+            downward = self.list_data[-2][-2] - self.list_data[-1][-2]
 
-        avg_up = ((self.rsi_last_values[1] * (working_range - 1) + upward) / working_range)
-        avg_down = ((self.rsi_last_values[2] * (working_range - 1) + downward) / working_range)
+        avg_up = ((self.rsi_need[0] * (working_range - 1) + upward) / working_range)
+        avg_down = ((self.rsi_need[1] * (working_range - 1) + downward) / working_range)
         rs = avg_up / avg_down
-        rsi_out = 100 - (100 / (rs + 1))
-        self.rsi_last_values = [cur_data[-2], avg_up, avg_down]
+        rsi_out = round(100 - (100 / (rs + 1)), 2)
+        self.rsi_need = [avg_up, avg_down]
 
-        return round(rsi_out, 2)
+        self.rsi_last_values.pop(0)
+        self.rsi_last_values.append(rsi_out)
 
     def mac_init(self):
         multi_12 = 2 / 13
         multi_26 = 2 / 27
         multi_9 = 2 / 10
-        macd_cur = []
         sma_12 = []
         sma_26 = []
         ema_12 = []
@@ -179,34 +196,137 @@ class Indicators:
             if i >= 26:
                 if i == 26:
                     avg = sum(sma_26) / len(sma_26)
-                    macd_cur.append(ema_12[-2] - avg)
+                    self.mac_last_values[0].append(round(ema_12[-2] - avg, 2))
                     calc = self.list_data[i][-2] * multi_26 + avg * (1 - multi_26)
                 else:
                     calc = self.list_data[i][-2] * multi_26 + ema_26[-1] * (1 - multi_26)
                 ema_26.append(calc)
-                macd_cur.append(ema_12[-1] - ema_26[-1])
-                if len(macd_cur) > 9:
-                    if len(macd_cur) == 10:
-                        avg = sum(macd_cur[:9]) / len(macd_cur[:9])
-                        calc = macd_cur[-1] * multi_9 + avg * (1 - multi_9)
+                self.mac_last_values[0].append(round(ema_12[-1] - ema_26[-1], 2))
+                if len(self.mac_last_values[0]) > 9:
+                    if len(self.mac_last_values[0]) == 10:
+                        avg = sum(self.mac_last_values[0][:9]) / len(self.mac_last_values[0][:9])
+                        calc = self.mac_last_values[0][-1] * multi_9 + avg * (1 - multi_9)
                     else:
-                        calc = macd_cur[-1] * multi_9 + self.mac_last_values[-1][-1] * (1 - multi_9)
-                    self.mac_last_values.append([ema_12[-1], ema_26[-1], macd_cur[-1], calc])
+                        calc = self.mac_last_values[0][-1] * multi_9 + self.mac_last_values[1][-1] * (1 - multi_9)
+                    self.mac_last_values[1].append(round(calc, 2))
             else:
                 sma_26.append(self.list_data[i][3])
-        self.mac_last_values = self.mac_last_values[-1]
+        self.mac_need = [ema_12[-1], ema_26[-1]]
+        self.mac_last_values[0] = [0] * (60 - len(self.mac_last_values[0])) + self.mac_last_values[0]
+        self.mac_last_values[1] = [0] * (60 - len(self.mac_last_values[1])) + self.mac_last_values[1]
 
-    def mac(self, cur_data):
+    def mac(self):
         multi_12 = 2 / 13
         multi_26 = 2 / 27
         multi_9 = 2 / 10
 
-        ema_12_cur = cur_data[-2] * multi_12 + self.mac_last_values[0] * (1 - multi_12)
-        ema_26_cur = cur_data[-2] * multi_26 + self.mac_last_values[1] * (1 - multi_26)
+        ema_12_cur = self.list_data[-1][-2] * multi_12 + self.mac_need[0] * (1 - multi_12)
+        ema_26_cur = self.list_data[-1][-2] * multi_26 + self.mac_need[1] * (1 - multi_26)
         macd_calc = ema_12_cur - ema_26_cur
-        signal = macd_calc * multi_9 + self.mac_last_values[-1] * (1 - multi_9)
-        self.mac_last_values = [ema_12_cur, ema_26_cur, macd_calc, signal]
-        return self.mac_last_values
+        signal = macd_calc * multi_9 + self.mac_last_values[1][-1] * (1 - multi_9)
+
+        self.mac_need = [ema_12_cur, ema_26_cur]
+        self.mac_last_values[0].pop(0)
+        self.mac_last_values[0].append(round(macd_calc, 2))
+
+        self.mac_last_values[1].pop(0)
+        self.mac_last_values[1].append(round(signal, 2))
+
+    def ob_init(self):
+        obs = []
+        for i in range(len(self.list_data)):
+            if i == 0:
+                continue
+            if i == len(self.list_data) - 1:
+                break
+
+            # for bullish OB first OHLC
+            if self.list_data[i][2] < self.list_data[i + 1][2] and self.list_data[i][2] < self.list_data[i - 1][2]:
+                # checks first for the middle if it is down close this is the one that we will want to take and is the
+                # best case
+                if self.list_data[i][0] > self.list_data[i][3]:
+                    self.ob_up_last_values.append(self.list_data[i][0])
+                    print(i, self.list_data[i][0])
+                # checks if first candle is down close candle
+                elif self.list_data[i - 1][0] > self.list_data[i - 1][3]:
+                    self.ob_up_last_values.append(self.list_data[i - 1][0])
+                    print(i, self.list_data[i - 1][0])
+                # checks if 3rd candle is down close candle
+                elif self.list_data[i + 1][0] > self.list_data[i + 1][3]:
+                    self.ob_up_last_values.append(self.list_data[i + 1][0])
+                    print(i, self.list_data[i + 1][0])
+            # for bearish the order block will be an up close candle OHLC
+            if self.list_data[i][1] > self.list_data[i - 1][1] and self.list_data[i][1] > self.list_data[i + 1][1]:
+                # checks first for the middle it is an up close candle this is the best case and the one we will take
+                if self.list_data[i][0] < self.list_data[i][3]:
+                    self.ob_down_last_values.append(self.list_data[i][0])
+                    print(i, self.list_data[i][0])
+                elif self.list_data[i - 1][0] < self.list_data[i - 1][3]:
+                    self.ob_down_last_values.append(self.list_data[i - 1][0])
+                    print(i, self.list_data[i - 1][0])
+                elif self.list_data[i + 1][0] < self.list_data[i + 1][3]:
+                    self.ob_down_last_values.append(self.list_data[i + 1][0])
+                    print(i, self.list_data[i + 1][0])
+        self.ob_up_last_values = self.ob_up_last_values[-3:]
+        self.ob_down_last_values = self.ob_down_last_values[-3:]
+
+    def ob(self):
+        if self.list_data[-2][2] < self.list_data[-1][2] and self.list_data[-2][2] < self.list_data[-3][2]:
+            # checks first for the middle if it is down close this is the one that we will want to take and is the
+            # best case
+            if self.list_data[-2][0] > self.list_data[-2][3]:
+                self.ob_up_last_values.pop(0)
+                self.ob_up_last_values.append(self.list_data[-2][0])
+            # checks if first candle is down close candle
+            elif self.list_data[-3][0] > self.list_data[-3][3]:
+                self.ob_up_last_values.pop(0)
+                self.ob_up_last_values.append(self.list_data[-3][0])
+            # checks if 3rd candle is down close candle
+            elif self.list_data[-1][0] > self.list_data[-1][3]:
+                self.ob_up_last_values.pop(0)
+                self.ob_up_last_values.append(self.list_data[-1][0])
+        # for bearish the order block will be an up close candle OHLC
+        if self.list_data[-2][1] > self.list_data[-3][1] and self.list_data[-2][1] > self.list_data[-1][1]:
+            # checks first for the middle it is an up close candle this is the best case and the one we will take
+            if self.list_data[-2][0] < self.list_data[-2][3]:
+                self.ob_down_last_values.pop(0)
+                self.ob_down_last_values.append(self.list_data[-2][0])
+            elif self.list_data[-3][0] < self.list_data[-3][3]:
+                self.ob_down_last_values.pop(0)
+                self.ob_down_last_values.append(self.list_data[-3][0])
+            elif self.list_data[-1][0] < self.list_data[-1][3]:
+                self.ob_down_last_values.pop(0)
+                self.ob_down_last_values.append(self.list_data[-1][0])
+
+    def fvg_init(self):
+        for i in range(len(self.list_data)):
+            if i + 2 >= len(self.list_data):
+                break
+            if self.list_data[i][1] < self.list_data[i + 2][2]:
+                self.fvgs_up_last_values.append([self.list_data[i][1], self.list_data[i + 2][2]])
+            elif self.list_data[i][2] > self.list_data[i + 2][1]:
+                self.fvgs_down_last_values.append([self.list_data[i + 2][1], self.list_data[i][2]])
+
+        up_num = len(self.fvgs_up_last_values)
+        if up_num >= 3:
+            self.fvgs_up_last_values = self.fvgs_up_last_values[-3:]
+        else:
+            self.fvgs_up_last_values = [0]*(3-up_num) + self.fvgs_up_last_values
+
+        down_num = len(self.fvgs_down_last_values)
+        if down_num >= 3:
+            self.fvgs_down_last_values = self.fvgs_down_last_values[-3:]
+        else:
+            self.fvgs_down_last_values = [0]*(3-down_num) + self.fvgs_down_last_values
+
+    def fvg(self):
+        if self.list_data[-3][1] < self.list_data[-1][2]:
+            self.fvgs_up_last_values.pop(0)
+            self.fvgs_up_last_values.append([self.list_data[-3][1], self.list_data[-1][2]])
+        elif self.list_data[-3][2] > self.list_data[-1][1]:
+            self.fvgs_down_last_values.pop(0)
+            self.fvgs_down_last_values.append([self.list_data[-3][1], self.list_data[-1][2]])
+
 
 test_data = [[19629,19645.25,19614.5,19623.5,45522.75],
 [19623.25,19649.75,19623,19641.5,45522.7506944444],
@@ -268,9 +388,13 @@ test_data = [[19629,19645.25,19614.5,19623.5,45522.75],
 [19650.25,19651.75,19646.75,19650,45522.7895833333],
 [19651.25,19651.5,19648.25,19648.25,45522.7902777778]]
 next = [19649,19651.5,19644.25,19646.75,45522.7909722222]
-a = Indicators(test_data, rsi_flag=True, mac_flag=True)
-print(a.rsi(next))
-# a.mac_init()
-# print(a.mac_last_values)
-next = [19648,19654.25,19647.5,19653.25,45522.7916666667]
-print(a.rsi(next))
+a = Indicators(test_data, ob_flag=True)
+print('up', 'down')
+print(a.ob_up_last_values, a.ob_down_last_values)
+print(a.get_indicators(next))
+a.ob()
+print(a.ob_up_last_values, a.ob_down_last_values)
+next = [19648,19654.25,19647.5,19653.25]
+a.get_indicators(next)
+a.ob()
+print(a.ob_up_last_values, a.ob_down_last_values)
