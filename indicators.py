@@ -118,8 +118,6 @@ class Indicators:
         self.df['Time'] = pd.to_datetime(self.df['Time'], format='%I:%M%p')
         self.df['Time'] = self.df['Time'].dt.strftime('%H:%M:%S')
 
-        print(self.df.loc[(self.df['Date'] == '2011-01-13') & (self.df['Time'] == '08:30:00')])
-
         self.rsi_last_values = []
         self.mac_last_values = [[], []]  # list of 2 items, the first is list of macd and the second is list of trigger
         self.ob_up_last_values = []
@@ -128,10 +126,31 @@ class Indicators:
         self.fvgs_down_last_values = []
         self.news_last_values = []
 
+        self.indicators_init()
+
+    def get_state_space(self):
+        outputting = []
+        for i in range(60):
+            appending = [self.list_data[i][-2]]
+            if self.rsi_flag:
+                appending.append(self.rsi_last_values[i])
+            if self.mac_flag:
+                appending.append(self.mac_last_values[0][i])
+            # if self.ob_flag:
+            #     appending.extend([self.ob_up_last_values[i], self.ob_down_last_values[i]])
+            # if self.fvg_flag:
+            #     appending.extend([self.fvgs_up_last_values[i], self.fvgs_down_last_values[i]])
+            if self.news_flag:
+                appending.append(self.news_last_values[i])
+            outputting.append(appending)
+        return outputting
+
+    def indicators_init(self):
         if self.rsi_flag:
             self.rsi_init()
         if self.mac_flag:
             self.mac_init()
+            # for now when calling mac will only return the mac value and not the trigger
         if self.ob_flag:
             self.ob_init()
         if self.fvg_flag:
@@ -142,6 +161,17 @@ class Indicators:
     def get_indicators(self, cur_data):
         self.list_data.pop(0)
         self.list_data.append(cur_data)
+
+        if self.rsi_flag:
+            self.rsi()
+        if self.mac_flag:
+            self.mac()
+        if self.ob_flag:
+            self.ob()
+        if self.fvg_flag:
+            self.fvg()
+        if self.news_flag:
+            self.economic_news()
 
     def rsi_init(self):
         working_range = 14
@@ -171,6 +201,7 @@ class Indicators:
         working_range = 14
         upward = 0
         downward = 0
+        print(self.list_data[-1])
         if self.list_data[-1][-2] > self.list_data[-2][-2]:
             upward = self.list_data[-1][-2] - self.list_data[-2][-2]
         else:
@@ -428,7 +459,3 @@ if __name__ == '__main__':
     print(a.get_indicators(next))
     a.economic_news()
     print(a.news_last_values)
-    # next = [19648,19654.25,19647.5,19653.25]
-    # a.get_indicators(next)
-    # a.ob()
-    # print(a.ob_up_last_values, a.ob_down_last_values)

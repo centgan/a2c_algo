@@ -165,8 +165,8 @@ class EnviroTraining:
                 })
 
             else:
-                if action == 'buy' and open_orders[0]['order'] == 'sell' or action == 'sell' and open_orders[-1][
-                    'order'] == 'buy':
+                if ((action == 'buy' and open_orders[0]['order'] == 'sell') or
+                        (action == 'sell' and open_orders[-1]['order'] == 'buy')):
                     to_append = open_orders.pop()
                     to_append['close_price'] = self.train_data[self.current_time_step][-2]
                     self.orders['closed'].append(to_append)
@@ -239,6 +239,7 @@ class EnviroLocalTraining:
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
 
         self.start_opening = 0
+        self.first_start = ""
         self.start_date = ""
         self.year_data = self.get_data()
         self.overflow = []
@@ -262,7 +263,8 @@ class EnviroLocalTraining:
         # Observation space is here and can try combinations like retail: MACD + RSI, or smc: Order Blocks + FVG both
         # with time and the past 60 candles of information. There are other combos that retail use that I can try
         # out as well
-        self.env_out = [[x[-2] for x in self.train_data[:self.current_time_step]]]
+        self.state_space = indicators.Indicators(self.train_data, rsi_flag=True, mac_flag=True)
+        self.env_out = self.state_space.get_state_space()
 
     def get_data(self):
         with open(f'full_training_data_{self.current_year}.json', 'r') as f:
@@ -283,32 +285,38 @@ class EnviroLocalTraining:
         if len(data) == 5:
             self.start_opening = data[0]
             self.start_date = datetime.strptime(data[-1][:19], '%Y-%m-%d %H:%M:%S')
+            if self.current_time_step == 0:
+                self.first_start = datetime.strptime(data[-1][:19], '%Y-%m-%d %H:%M:%S')
             ret_list[0] = self.start_opening
+            within_counter = 0
         else:
             ret_list[0] = round(self.start_opening - ret_list[0], 1)
-        ret_list[1] = ret_list[0] + ret_list[1]
-        ret_list[2] = ret_list[0] + ret_list[2]
+        ret_list[1] = round(ret_list[0] + ret_list[1], 1)
+        ret_list[2] = round(ret_list[0] + ret_list[2], 1)
 
         index_multi = str(data[3]).find('_x')
         if index_multi != -1:
             multiplier = int(str(data[3]).split('_x')[-1])
-            ret_list[3] = ret_list[0] + float(str(ret_list[3]).split('_x')[0])
+            ret_list[3] = round(ret_list[0] + float(str(ret_list[3]).split('_x')[0]), 1)
 
             full = []
             for index in range(multiplier):
                 appending = ret_list.copy()
                 if len(ret_list) == 5:
                     if index != 0:
-                        appending[-1] = str(self.start_date + timedelta(minutes=(index + self.current_time_step)))
+                        appending[-1] = str(self.first_start + timedelta(minutes=(index + self.current_time_step)))
                     else:
                         appending[-1] = str(self.start_date)
                 else:
-                    appending.append(str(self.start_date + timedelta(minutes=(index + self.current_time_step))))
+                    appending.append(str(self.first_start + timedelta(minutes=(index + self.current_time_step))))
                 full.append(appending)
             return full
         else:
-            ret_list[3] = ret_list[0] + ret_list[3]
-            ret_list.append(str(self.start_date + timedelta(minutes=self.current_time_step)))
+            ret_list[3] = round(ret_list[0] + ret_list[3], 1)
+            if len(data) == 5:
+                ret_list[-1] = str(self.start_date)
+            else:
+                ret_list.append(str(self.first_start + timedelta(minutes=self.current_time_step)))
 
         return [ret_list]
 
@@ -363,11 +371,10 @@ class EnviroLocalTraining:
                     pass
 
         self.train_data.pop(0)
-        self.train_data.append(self.overflow.pop())
-        print(self.train_data)
-        env_outputs = [[x[-2] for x in self.train_data[:self.current_time_step]]
-
-                       ]
+        current_data = self.overflow.pop(0)
+        self.train_data.append(current_data)
+        self.state_space.get_indicators(current_data)
+        env_out = self.state_space.get_state_space()
         reward_unreal = 0
 
         if len(open_orders) > 0:
@@ -380,14 +387,15 @@ class EnviroLocalTraining:
 
         with open('orders.json', 'w') as write:
             json.dump(self.orders, write, indent=4)
-        return [env_outputs, reward_real, reward_unreal]
+        return [env_out, reward_real, reward_unreal]
 
 
-train_start = '2011-01-03'
-train_end = '2020-02-03'
-# train_start = datetime.strptime(train_start, "%Y-%m-%d %H:%M:%S")
-# train_final_end = datetime.strptime(train_end, "%Y-%m-%d %H:%M:%S")
-# train_end = train_start
-instrument = 'NAS100_USD'
-a = EnviroLocalTraining(instrument, train_start, train_end)
-a.step('hold')
+if __name__ == '__main__':
+    train_start = '2011-01-03'
+    train_end = '2020-02-03'
+    # train_start = datetime.strptime(train_start, "%Y-%m-%d %H:%M:%S")
+    # train_final_end = datetime.strptime(train_end, "%Y-%m-%d %H:%M:%S")
+    # train_end = train_start
+    instrument = 'NAS100_USD'
+    a = EnviroLocalTraining(instrument, train_start, train_end)
+    a.step('hold')

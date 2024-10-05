@@ -94,7 +94,6 @@ class AgentSep:
 
         # actor_time = time.time()
         # print("---to actor call----: ", actor_time - start)
-        # print(probs)
         action_probs = tfp.distributions.Categorical(probs=probs)
         # probs_numpy = probs.numpy()[0]
         # cumulative_probs = np.cumsum(probs_numpy)
