@@ -201,7 +201,7 @@ class Indicators:
         working_range = 14
         upward = 0
         downward = 0
-        print(self.list_data[-1])
+        # print(self.list_data[-1])
         if self.list_data[-1][-2] > self.list_data[-2][-2]:
             upward = self.list_data[-1][-2] - self.list_data[-2][-2]
         else:
