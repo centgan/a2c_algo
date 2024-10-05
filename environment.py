@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 import pytz
+import indicators
 
 est = pytz.timezone('America/New_York')
 utc = pytz.utc
@@ -298,15 +299,16 @@ class EnviroLocalTraining:
                 appending = ret_list.copy()
                 if len(ret_list) == 5:
                     if index != 0:
-                        appending[-1] = str(self.start_date + timedelta(seconds=5 * (index + self.current_time_step)))
+                        appending[-1] = str(self.start_date + timedelta(minutes=(index + self.current_time_step)))
                     else:
                         appending[-1] = str(self.start_date)
                 else:
-                    appending.append(str(self.start_date + timedelta(seconds=5 * (index + self.current_time_step))))
+                    appending.append(str(self.start_date + timedelta(minutes=(index + self.current_time_step))))
                 full.append(appending)
             return full
         else:
             ret_list[3] = ret_list[0] + ret_list[3]
+            ret_list.append(str(self.start_date + timedelta(minutes=self.current_time_step)))
 
         return [ret_list]
 
@@ -346,8 +348,8 @@ class EnviroLocalTraining:
                 })
 
             else:
-                if action == 'buy' and open_orders[0]['order'] == 'sell' or action == 'sell' and open_orders[-1][
-                    'order'] == 'buy':
+                if ((action == 'buy' and open_orders[0]['order'] == 'sell') or
+                        (action == 'sell' and open_orders[-1]['order'] == 'buy')):
                     to_append = open_orders.pop()
                     to_append['close_price'] = self.train_data[-1][-2]
                     self.orders['closed'].append(to_append)
@@ -362,6 +364,7 @@ class EnviroLocalTraining:
 
         self.train_data.pop(0)
         self.train_data.append(self.overflow.pop())
+        print(self.train_data)
         env_outputs = [[x[-2] for x in self.train_data[:self.current_time_step]]
 
                        ]
@@ -387,3 +390,4 @@ train_end = '2020-02-03'
 # train_end = train_start
 instrument = 'NAS100_USD'
 a = EnviroLocalTraining(instrument, train_start, train_end)
+a.step('hold')
