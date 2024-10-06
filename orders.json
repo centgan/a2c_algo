@@ -1,23 +1,17 @@
 {
-    "open": [],
+    "open": [
+        {
+            "datetime": "2017-01-03 01:10:00",
+            "entry_price": 4893.3,
+            "order": "buy"
+        }
+    ],
     "closed": [
         {
-            "datetime": "2011-01-03 01:01:00",
-            "entry_price": 2227.7,
+            "datetime": "2017-01-03 00:59:00",
+            "entry_price": 4895.1,
             "order": "sell",
-            "close_price": 2227.7
-        },
-        {
-            "datetime": "2011-01-03 01:03:00",
-            "entry_price": 2227.9,
-            "order": "sell",
-            "close_price": 2227.9
-        },
-        {
-            "datetime": "2011-01-03 01:07:00",
-            "entry_price": 2228.2,
-            "order": "buy",
-            "close_price": 2228.2
+            "close_price": 4893.5
         }
     ]
 }
