@@ -6,6 +6,7 @@ import json
 import logging
 import pytz
 import indicators
+import numpy as np
 
 est = pytz.timezone('America/New_York')
 utc = pytz.utc
