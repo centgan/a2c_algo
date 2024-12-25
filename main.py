@@ -3,8 +3,8 @@
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
-from environment import EnviroTraining, EnviroLocalTraining
-from model import Agent, AgentSep
+from environment import EnviroLocalTraining
+from model import AgentSep
 import matplotlib.pyplot as plt
 import time
 import concurrent.futures as cf
@@ -59,85 +59,24 @@ def training(instrument, start_train, end_train, core_num):
             agent.save_model()
 
 
-def funcHopSkipJump(matrix, mat_rows, mat_cols):
-    # Write your code here
-    visited = [[False for _ in range(mat_cols+1)] for _ in range(mat_rows+1)]
-    x_pos = 0
-    y_pos = 0
-    done = False
-    print(visited)
-    while not done:
-        # move down
-        while y_pos + 2 <= mat_rows:
-            if y_pos + 2 > mat_rows or visited[y_pos + 2][x_pos]:
-                if visited[y_pos + 1][x_pos + 1]:
-                    return matrix[y_pos][x_pos]
-                y_pos += 1
-                x_pos += 1
-                break
-            else:
-                y_pos += 2
-                visited[y_pos][x_pos] = True
-
-        # move right
-        while x_pos + 2 < mat_cols:
-            if x_pos + 2 < mat_cols or visited[y_pos][x_pos + 2]:
-                if visited[y_pos - 1][x_pos + 1]:
-                    return matrix[y_pos][x_pos]
-                y_pos -= 1
-                x_pos += 1
-                break
-            else:
-                x_pos += 2
-                visited[y_pos][x_pos] = True
-
-        # move up
-        while y_pos - 2 > 0:
-            if y_pos - 2 > 0 or visited[y_pos - 2][x_pos]:
-                if visited[y_pos - 1][x_pos - 1]:
-                    return matrix[y_pos][x_pos]
-                x_pos -= 1
-                y_pos -= 1
-                break
-            else:
-                y_pos -= 2
-                visited[y_pos][x_pos] = True
-
-        # move left
-        while x_pos > 0:
-            if x_pos - 2 > 0 or visited[y_pos][x_pos - 2]:
-                if visited[y_pos + 1][x_pos - 1]:
-                    return matrix[y_pos][x_pos]
-                y_pos += 1
-                x_pos -= 1
-                break
-            else:
-                x_pos -= 2
-                visited[y_pos][x_pos] = True
-
 if __name__ == '__main__':
-    funcHopSkipJump([
-    [29, 8, 37],
-    [15, 41, 3],
-    [1, 10, 14]
-], 2, 2)
-    # start_training = '2011-01-03'
-    # end_training = '2020-02-03'
-    #
-    # start_date = datetime.strptime(start_training, '%Y-%m-%d')
-    # end_date = datetime.strptime(end_training, '%Y-%m-%d')
-    # # 4 cores
-    # n = 4
-    # # dates separated equally for 4 cores
-    # res = [date.strftime("%Y-%m-%d") for date in group_util(start_date, end_date, n)]
-    #
-    # with cf.ProcessPoolExecutor() as executor:
-    #     # results = []
-    #     for idx, i in enumerate(res):
-    #         if idx == 0:
-    #             pass
-    #         else:
-    #             executor.submit(training, INSTRUMENT, res[idx-1], i, idx)
+    start_training = '2011-01-03'
+    end_training = '2020-02-03'
+
+    start_date = datetime.strptime(start_training, '%Y-%m-%d')
+    end_date = datetime.strptime(end_training, '%Y-%m-%d')
+    # 4 cores
+    n = 4
+    # dates separated equally for 4 cores
+    res = [date.strftime("%Y-%m-%d") for date in group_util(start_date, end_date, n)]
+
+    with cf.ProcessPoolExecutor() as executor:
+        # results = []
+        for idx, i in enumerate(res):
+            if idx == 0:
+                pass
+            else:
+                executor.submit(training, INSTRUMENT, res[idx-1], i, idx)
 
     # env = EnviroLocalTraining('NAS100_USD', '2011-01-03', '2020-02-03')
     # # agent = Agent(alpha=0.0001, action_size=3)

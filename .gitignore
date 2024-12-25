@@ -6,6 +6,6 @@ tester.json
 Environment.log
 __pycache__
 tmp/*
-log.log
+*.log
 orders.json
 /tmp/

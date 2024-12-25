@@ -4,6 +4,10 @@
 
 import pandas as pd
 from datetime import datetime
+import numpy as np
+import time
+from tensorflow.keras import datasets, layers, models
+
 
 # indicators should return with a constant length array
 # For the research paper method the first 60 entries consist of rsi and the next 60 consist of macd (for now forget
@@ -98,6 +102,7 @@ class Indicators:
                 upward.append(0)
         avg_up = sum(upward[:working_range]) / len(upward[:working_range])
         avg_down = sum(downward[:working_range]) / len(downward[:working_range])
+        self.rsi_last_values.append(round(100 - (100 / ((avg_up/avg_down) + 1)), 2))
 
         for i in range(working_range, len(self.list_data) - 1):
             avg_up = ((avg_up * (working_range - 1) + upward[i]) / working_range)
@@ -364,8 +369,18 @@ if __name__ == '__main__':
                  [2227.7, 2227.7, 2227.7, 2227.7, '2011-01-13 08:59:00']]
 
     next = [2227.9, 2227.9, 2227.9, 2227.9, '2011-01-13 01:00:00']
-    a = Indicators(test_data, news_flag=True)
-    print(a.news_last_values)
-    print(a.get_indicators(next))
-    a.economic_news()
-    print(a.news_last_values)
+    ends = []
+    a = Indicators(test_data, rsi_flag=True)
+    print(a.rsi_last_values)
+    for i in range(0, 10):
+        start = time.time()
+        a.rsi_init()
+        b = time.time() - start
+        print(b)
+        ends.append(b)
+    print(sum(ends)/10)
+    print(a.rsi_last_values)
+    # print(a.news_last_values)
+    # print(a.get_indicators(next))
+    # a.economic_news()
+    # print(a.news_last_values)
