@@ -33,6 +33,7 @@ class EnviroBatchProcess:
         self.orders = {"open": [], "closed": []}
         self.year_time_step = 0  # keeps track of which index in the year currently on
         self.last_reward = 0
+        self.done = False
 
         self.year_data = self.fetch_current_year_data()
         indicator_class = indicators.BatchIndicators(self.year_data, rsi_flag=True, mac_flag=True)
@@ -111,13 +112,15 @@ class EnviroBatchProcess:
                 else:
                     individual_batch = np.column_stack((individual_batch, np.array(j[i:i+60])))
             returning_batch.append(individual_batch)
-        return np.array(returning_batch)
+        return np.array(returning_batch, dtype=np.float32)
 
     # actions is a list of 256
     def step(self, actions):
         # fetch the data for the next year
         if self.year_time_step >= len(self.year_data):
             self.current_year += 1
+            if self.current_year >= self.train_end.year:
+                self.done = True
             self.year_data = self.fetch_current_year_data()
 
             # once after running through the entire year's data will write all the orders to a file

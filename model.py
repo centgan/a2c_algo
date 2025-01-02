@@ -5,7 +5,7 @@ from network import ActorNetwork, CriticNetwork
 import logging
 
 
-class AgentSep:
+class Agent:
     def __init__(self, alpha_actor=1, alpha_critic=1, gamma=0.99, action_size=1):
         self.action_size = action_size
         self.gamma = gamma
@@ -23,7 +23,7 @@ class AgentSep:
                             format='%(asctime)s  %(levelname)s: %(message)s')
 
     def choose_action(self, observation):
-        state = tf.convert_to_tensor([observation])
+        state = tf.convert_to_tensor(observation)
         # start = time.time()
         probs = self.actor.call(state)
 
@@ -50,9 +50,9 @@ class AgentSep:
         return action.numpy()[0]
 
     def learn(self, state,  reward, state_):
-        state = tf.convert_to_tensor([state], dtype=tf.float32)
-        state_ = tf.convert_to_tensor([state_], dtype=tf.float32)
-        reward = tf.convert_to_tensor([reward], dtype=tf.float32)
+        state = tf.convert_to_tensor(state, dtype=tf.float32)
+        state_ = tf.convert_to_tensor(state_, dtype=tf.float32)
+        reward = tf.convert_to_tensor(reward, dtype=tf.float32)
         with tf.GradientTape(persistent=True) as tape:
             # state_val, probs = self.actor_critic.call(state)
             state_val = self.critic.call(state)
