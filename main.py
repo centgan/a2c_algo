@@ -18,45 +18,45 @@ LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
 
 
-def group_util(date1, date2, n_periods):
-    diff = (date2 - date1) / n_periods
-    return [date1 + diff * idx for idx in range(n_periods)] + [date2]
-
-
-def training(instrument, start_train, end_train, core_num):
-    print(start_train, end_train, core_num)
-    env = EnviroBatchProcess(instrument, start_train, end_train)
-    # agent = Agent(alpha=0.0001, action_size=3)
-    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-
-    observation = env.env_out
-    balance = 0
-    pre_balance = 0
-    highest_balance = 0
-    reward_history = []
-    action_mapping = ['sell', 'hold', 'buy']
-    while not env.done:
-        print(observation, core_num)
-        actions = agent.choose_action(observation)
-        # print(action)
-        # print(action_mapping[action], action)
-        observation_, reward_real, reward_unreal = env.step(action_mapping[action] for action in actions)
-
-        reward_history.append(reward_unreal)
-        balance += reward_real
-        if not LOAD_CHECK:
-            agent.learn(observation, reward_unreal, observation_)
-        observation = observation_
-
-        # print(str(balance) + ' running on core number: ' + str(core_num))
-        if balance != pre_balance:
-            print(str(round(balance, 1)) + ' running on core number: ' + str(core_num))
-        balance = round(balance, 1)
-        pre_balance = balance
-        # print(balance)
-        if balance > highest_balance and not LOAD_CHECK:
-            highest_balance = balance
-            agent.save_model()
+# def group_util(date1, date2, n_periods):
+#     diff = (date2 - date1) / n_periods
+#     return [date1 + diff * idx for idx in range(n_periods)] + [date2]
+#
+#
+# def training(instrument, start_train, end_train, core_num):
+#     print(start_train, end_train, core_num)
+#     env = EnviroBatchProcess(instrument, start_train, end_train)
+#     # agent = Agent(alpha=0.0001, action_size=3)
+#     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
+#
+#     observation = env.env_out
+#     balance = 0
+#     pre_balance = 0
+#     highest_balance = 0
+#     reward_history = []
+#     action_mapping = ['sell', 'hold', 'buy']
+#     while not env.done:
+#         print(observation, core_num)
+#         actions = agent.choose_action(observation)
+#         # print(action)
+#         # print(action_mapping[action], action)
+#         observation_, reward_real, reward_unreal = env.step(action_mapping[action] for action in actions)
+#
+#         reward_history.append(reward_unreal)
+#         balance += reward_real
+#         if not LOAD_CHECK:
+#             agent.learn(observation, reward_unreal, observation_)
+#         observation = observation_
+#
+#         # print(str(balance) + ' running on core number: ' + str(core_num))
+#         if balance != pre_balance:
+#             print(str(round(balance, 1)) + ' running on core number: ' + str(core_num))
+#         balance = round(balance, 1)
+#         pre_balance = balance
+#         # print(balance)
+#         if balance > highest_balance and not LOAD_CHECK:
+#             highest_balance = balance
+#             agent.save_model()
 
 
 if __name__ == '__main__':
@@ -85,11 +85,11 @@ if __name__ == '__main__':
             agent.learn(observation, reward_real, observation_)
         observation = observation_
 
-        if env.last_reward != pre_balance:
-            print(env.last_reward, env.year_time_step/len(env.year_data)*100)
-        pre_balance = env.last_reward
-        if env.last_reward > highest_balance and not load_checkpoint:
-            env.last_reward = balance
+        if env.balance != pre_balance:
+            print(round(env.balance, 2), round(env.year_time_step / len(env.year_data) * 100, 2))
+        pre_balance = env.balance
+        if env.balance > highest_balance and not load_checkpoint:
+            env.balance = balance
             agent.save_model()
 
 

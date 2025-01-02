@@ -31,8 +31,8 @@ class EnviroBatchProcess:
         self.first_date = datetime.now()  # just as a placeholder for opening date for compression and decompression
 
         self.orders = {"open": [], "closed": []}
-        self.year_time_step = 0  # keeps track of which index in the year currently on
-        self.last_reward = 0
+        self.year_time_step = 60  # keeps track of which index in the year currently on
+        self.balance = 0
         self.done = False
 
         self.year_data = self.fetch_current_year_data()
@@ -98,19 +98,19 @@ class EnviroBatchProcess:
         returning_batch = []
         end_index = len(self.year_data) if self.year_time_step + self.batch_size > len(self.year_data) else self.year_time_step + self.batch_size
         for i in range(self.year_time_step, end_index):
-            individual_batch = np.array(self.year_data[i:i+60])
+            individual_batch = np.array(self.year_data[i-60:i])
             individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
 
-            individual_batch = np.column_stack((individual_batch, np.array(self.year_indicators[0][0][i:i+60]))) \
+            individual_batch = np.column_stack((individual_batch, np.array(self.year_indicators[0][0][i-60:i]))) \
                 if len(self.year_indicators[0]) == 2 \
-                else np.column_stack((individual_batch, np.array(self.year_indicators[0][i:i+60])))
+                else np.column_stack((individual_batch, np.array(self.year_indicators[0][i-60:i])))
 
             for j in self.year_indicators[1:]:
                 if len(j) == 2:
                     # this is [macd, signal] only worrying about macd right now
-                    individual_batch = np.column_stack((individual_batch, np.array(j[0][i:i+60])))
+                    individual_batch = np.column_stack((individual_batch, np.array(j[0][i-60:i])))
                 else:
-                    individual_batch = np.column_stack((individual_batch, np.array(j[i:i+60])))
+                    individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
             returning_batch.append(individual_batch)
         return np.array(returning_batch, dtype=np.float32)
 
@@ -149,6 +149,7 @@ class EnviroBatchProcess:
                         'order': action
                     })
                     returning_reward.append(-1)  # commission for now is 1
+                    self.balance -= 1
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
                         move_to_close = self.orders['open'].pop()
@@ -156,18 +157,19 @@ class EnviroBatchProcess:
                         move_to_close['exit_price'] = self.year_data[self.year_time_step+action_index][-2]
                         self.orders['closed'].append(move_to_close)
                         # this reward below just calculates the difference between entry and exit apply a commission
-                        # rate of 1 (for now) and append on the last self.last_reward which in a sense is just the
-                        # overall balance
+                        # rate of 1 (for now)
                         reward = ((move_to_close['entry_price'] - move_to_close['exit_price']) *
-                                  reward_multiplier[self.instrument]) - 1 + self.last_reward if action == 'buy' else (
+                                  reward_multiplier[self.instrument]) - 1 if action == 'buy' else (
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
-                                 reward_multiplier[self.instrument]) - 1 + self.last_reward)
+                                 reward_multiplier[self.instrument]) - 1)
                         returning_reward.append(reward)
+                        self.balance += reward
                     else:
                         returning_reward.append(-1)
+                        self.balance -= 1
             else:
                 returning_reward.append(0)
-            self.last_reward = sum(returning_reward)
+            self.balance = sum(returning_reward)
 
         # updating state space to get next batch ie [:256] => [256:512]
         self.year_time_step += self.batch_size
