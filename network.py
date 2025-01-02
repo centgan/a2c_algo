@@ -17,15 +17,10 @@ class ActorNetwork(keras.Model):
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),
             LeakyReLU(negative_slope=0.05),
-            LSTM(self.dims_2),
+            LSTM(self.dims_2, return_sequences=True),
             LeakyReLU(negative_slope=0.05),
             Dense(self.action_size, activation='softmax'),
         ])
-        # self.layer1 = LSTM(dims_1)
-        # self.layer2 = LeakyReLU(alpha=0.05)
-        # self.layer3 = LSTM(dims_2)
-        # self.layer4 = LeakyReLU(alpha=0.05)
-        # self.pi = Dense(self.action_size, activation='softmax')
 
     def call(self, state):
         # value = self.layer1(state)
@@ -54,7 +49,7 @@ class CriticNetwork(keras.Model):
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),
             LeakyReLU(negative_slope=0.05),
-            LSTM(self.dims_2),
+            LSTM(self.dims_2, return_sequences=True),
             LeakyReLU(negative_slope=0.05),
             Dense(1, activation='tanh'),
         ])
