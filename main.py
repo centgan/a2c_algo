@@ -37,10 +37,10 @@ def training(instrument, start_train, end_train, core_num):
     action_mapping = ['sell', 'hold', 'buy']
     while not env.done:
         print(observation, core_num)
-        action = agent.choose_action(observation)
+        actions = agent.choose_action(observation)
         # print(action)
         # print(action_mapping[action], action)
-        observation_, reward_real, reward_unreal = env.step(action_mapping[action])
+        observation_, reward_real, reward_unreal = env.step(action_mapping[action] for action in actions)
 
         reward_history.append(reward_unreal)
         balance += reward_real

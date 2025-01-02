@@ -9,3 +9,4 @@ tmp/*
 *.log
 orders.json
 /tmp/
+data
