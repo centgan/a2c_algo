@@ -317,13 +317,16 @@ class Indicators:
 
 
 class BatchIndicators:
-    def __init__(self, data, rsi_flag=False, mac_flag=False, ob_flag=False, fvg_flag=False, news_flag=False):
-        self.list_data = data
+    def __init__(self, year_data_filename, year_data_shape, rsi_flag=False, mac_flag=False, ob_flag=False, fvg_flag=False, news_flag=False):
+        self.list_data = np.memmap(year_data_filename, dtype=object, mode='r', shape=year_data_shape)
         self.rsi_flag = rsi_flag
         self.mac_flag = mac_flag
         self.ob_flag = ob_flag
         self.fvg_flag = fvg_flag
         self.news_flag = news_flag
+
+        self.year_indicator_filename = 'year_indicator.dat'
+        self.year_indicator_shape = ()
 
         self.rsi_need = []
         self.mac_need = []
@@ -339,7 +342,7 @@ class BatchIndicators:
         self.fvgs_down_last_values = []
         self.news_last_values = []
 
-        self.state_space = self.batch_process()
+        self.batch_process()
 
     def batch_process(self):
         outputting = []
@@ -353,7 +356,12 @@ class BatchIndicators:
         #     self.fvg_calculate()
         # if self.news_flag:
         #     self.news_calculate()
-        return outputting
+        outputting = np.array(outputting)
+        self.year_indicator_shape = outputting.shape
+        arr = np.memmap(self.year_indicator_filename, dtype='float32', mode='w+', shape=self.year_indicator_shape)
+        for i in range(self.year_indicator_shape[0]):
+            arr[i] = outputting[i]
+        arr.flush()
 
     def rsi_calculate(self):
         period = 14
@@ -399,7 +407,8 @@ class BatchIndicators:
         # signal_line[34:] = calculate_ema(macd_line[25:], signal_period)
 
         # Return the MACD Line and Signal Line (same length as the input data)
-        return [macd_line, signal_line]
+
+        return macd_line
 
 
 if __name__ == '__main__':
