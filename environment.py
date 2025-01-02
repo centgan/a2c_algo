@@ -35,9 +35,10 @@ class EnviroBatchProcess:
         self.balance = 0
         self.done = False
 
-        self.year_data = self.fetch_current_year_data()
-        indicator_class = indicators.BatchIndicators(self.year_data, rsi_flag=True, mac_flag=True)
-        self.year_indicators = indicator_class.state_space
+        self.year_data_shape = ()
+        self.year_data_filename = 'year_data.dat'
+        self.fetch_current_year_data()
+        self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True)
 
         self.env_out = self.get_env_state()
 
@@ -65,7 +66,12 @@ class EnviroBatchProcess:
             uncompressed_data.extend(duplicate_candle)
             uncompressed_data.append(candle_to_append)
 
-        return uncompressed_data
+        uncompressed_data = np.array(uncompressed_data)
+        self.year_data_shape = uncompressed_data.shape
+        arr = np.memmap(self.year_data_filename, dtype=object, mode='w+', shape=self.year_data_shape)
+        for i in range(self.year_data_shape[0]):
+            arr[i] = uncompressed_data[i]
+        arr.flush()
 
     def decompress(self, candle):
         # for Open, High, Low, Close, Date
@@ -96,32 +102,27 @@ class EnviroBatchProcess:
 
     def get_env_state(self):
         returning_batch = []
-        end_index = len(self.year_data) if self.year_time_step + self.batch_size > len(self.year_data) else self.year_time_step + self.batch_size
+        end_index = self.year_data_shape[0] if self.year_time_step + self.batch_size > self.year_data_shape[0] else self.year_time_step + self.batch_size
+        year_data = np.memmap(self.year_data_filename, dtype=object, mode='r', shape=self.year_data_shape)
+        year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype='float32', mode='r', shape=self.indicator_class.year_indicator_shape)
         for i in range(self.year_time_step, end_index):
-            individual_batch = np.array(self.year_data[i-60:i])
+            individual_batch = np.array(year_data[i-60:i])
             individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
 
-            individual_batch = np.column_stack((individual_batch, np.array(self.year_indicators[0][0][i-60:i]))) \
-                if len(self.year_indicators[0]) == 2 \
-                else np.column_stack((individual_batch, np.array(self.year_indicators[0][i-60:i])))
-
-            for j in self.year_indicators[1:]:
-                if len(j) == 2:
-                    # this is [macd, signal] only worrying about macd right now
-                    individual_batch = np.column_stack((individual_batch, np.array(j[0][i-60:i])))
-                else:
-                    individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
+            for j in year_indicators[1:]:
+                individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
             returning_batch.append(individual_batch)
         return np.array(returning_batch, dtype=np.float32)
 
     # actions is a list of 256
     def step(self, actions):
         # fetch the data for the next year
-        if self.year_time_step >= len(self.year_data):
+        if self.year_time_step >= self.year_data_shape[0]:
             self.current_year += 1
             if self.current_year >= self.train_end.year:
                 self.done = True
-            self.year_data = self.fetch_current_year_data()
+            self.fetch_current_year_data()
+            self.indicator_class.batch_process()
 
             # once after running through the entire year's data will write all the orders to a file
             with open('orders.json', 'w') as write:
