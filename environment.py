@@ -97,7 +97,7 @@ class EnviroBatchProcess:
                     duplicate_candle.append(hold)
                 uncompressed_data.extend(duplicate_candle)
                 uncompressed_data.append(candle_to_append)
-        padding_required = 256 - (len(uncompressed_data) % 256)
+        padding_required = self.batch_size - (len(uncompressed_data) % self.batch_size)
         # print(len(uncompressed_data), padding_required)
         padding = [[0, 0, 0, 0, '0']] * padding_required
         uncompressed_data.extend(padding)
@@ -145,7 +145,7 @@ class EnviroBatchProcess:
             individual_batch = np.array(year_data[i-60:i])
             individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
 
-            for j in year_indicators[1:]:
+            for j in year_indicators:
                 individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
             returning_batch.append(individual_batch)
         return np.array(returning_batch, dtype=np.float32)
