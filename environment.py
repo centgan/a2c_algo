@@ -36,6 +36,7 @@ class EnviroBatchProcess:
         self.year_time_step = 60  # keeps track of which index in the year currently on
         self.balance = 0
         self.done = False
+        self.commission = 0
 
         self.year_data_shape = ()
         self.year_data_filename = 'year_data.dat'
@@ -186,7 +187,7 @@ class EnviroBatchProcess:
                         'exit_price': '',
                         'order': action
                     })
-                    self.balance -= 1  # commission for now is 1
+                    self.balance -= self.commission  # commission for now is 1
                     returning_reward.append(self.balance)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
@@ -197,13 +198,13 @@ class EnviroBatchProcess:
                         # this reward below just calculates the difference between entry and exit apply a commission
                         # rate of 1 (for now)
                         reward = ((move_to_close['entry_price'] - move_to_close['exit_price']) *
-                                  reward_multiplier[self.instrument]) - 1 if action == 'buy' else (
+                                  reward_multiplier[self.instrument]) - self.commission if action == 'buy' else (
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
-                                 reward_multiplier[self.instrument]) - 1)
+                                 reward_multiplier[self.instrument]) - self.commission)
                         self.balance += reward
                         returning_reward.append(self.balance)
                     else:
-                        self.balance -= 1
+                        self.balance -= self.commission
                         returning_reward.append(self.balance)
             else:
                 returning_reward.append(self.balance)
