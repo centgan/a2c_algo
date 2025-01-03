@@ -34,7 +34,6 @@ class EnviroBatchProcess:
 
         self.orders = {"open": [], "closed": []}
         self.year_time_step = 60  # keeps track of which index in the year currently on
-        self.balance = 0
         self.done = False
 
         self.year_data_shape = ()
@@ -99,11 +98,11 @@ class EnviroBatchProcess:
                 uncompressed_data.append(candle_to_append)
         padding_required = 256 - (len(uncompressed_data) % 256)
         # print(len(uncompressed_data), padding_required)
-        padding = [[0, 0, 0, 0, '0']] * padding_required
+        padding = [[0, 0, 0, 0, datetime.now()]] * padding_required
         uncompressed_data.extend(padding)
         uncompressed_data = np.array(uncompressed_data)
         self.year_data_shape = uncompressed_data.shape
-        # print(self.year_data_shape)
+        print(self.year_data_shape)
         arr = np.memmap(self.year_data_filename, dtype=object, mode='w+', shape=self.year_data_shape)
         for i in range(self.year_data_shape[0]):
             arr[i] = uncompressed_data[i]
@@ -151,7 +150,7 @@ class EnviroBatchProcess:
         return np.array(returning_batch, dtype=np.float32)
 
     # actions is a list of 256
-    def step(self, actions):
+    def step(self, actions_agents, balance_agents):
         # fetch the data for the next year
         year_data = np.memmap(self.year_data_filename, dtype=object, mode='r', shape=self.year_data_shape)
         if self.year_time_step >= self.year_data_shape[0]:
@@ -175,38 +174,41 @@ class EnviroBatchProcess:
         }
 
         returning_reward = []
-        # calculating the realized reward
-        for action_index, action in enumerate(actions):
-            if action != 'hold':
-                if len(self.orders['open']) == 0:
-                    self.orders['open'].append({
-                        'entry_datetime': year_data[self.year_time_step+action_index][-1],
-                        'exit_datetime': '',
-                        'entry_price': year_data[self.year_time_step+action_index][-2],
-                        'exit_price': '',
-                        'order': action
-                    })
-                    self.balance -= 1  # commission for now is 1
-                    returning_reward.append(self.balance)
-                else:
-                    if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
-                        move_to_close = self.orders['open'].pop()
-                        move_to_close['exit_datetime'] = year_data[self.year_time_step+action_index][-1]
-                        move_to_close['exit_price'] = year_data[self.year_time_step+action_index][-2]
-                        self.orders['closed'].append(move_to_close)
-                        # this reward below just calculates the difference between entry and exit apply a commission
-                        # rate of 1 (for now)
-                        reward = ((move_to_close['entry_price'] - move_to_close['exit_price']) *
-                                  reward_multiplier[self.instrument]) - 1 if action == 'buy' else (
-                                ((move_to_close['exit_price'] - move_to_close['entry_price']) *
-                                 reward_multiplier[self.instrument]) - 1)
-                        self.balance += reward
-                        returning_reward.append(self.balance)
+        for actions_index, actions in enumerate(actions_agents):
+            agent_reward = []
+            # calculating the realized reward
+            for action_index, action in enumerate(actions):
+                if action != 'hold':
+                    if len(self.orders['open']) == 0:
+                        self.orders['open'].append({
+                            'entry_datetime': year_data[self.year_time_step+action_index][-1],
+                            'exit_datetime': '',
+                            'entry_price': year_data[self.year_time_step+action_index][-2],
+                            'exit_price': '',
+                            'order': action
+                        })
+                        balance_agents[actions_index] -= 1  # commission for now is 1
+                        agent_reward.append(balance_agents[actions_index])
                     else:
-                        self.balance -= 1
-                        returning_reward.append(self.balance)
-            else:
-                returning_reward.append(self.balance)
+                        if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
+                            move_to_close = self.orders['open'].pop()
+                            move_to_close['exit_datetime'] = year_data[self.year_time_step+action_index][-1]
+                            move_to_close['exit_price'] = year_data[self.year_time_step+action_index][-2]
+                            self.orders['closed'].append(move_to_close)
+                            # this reward below just calculates the difference between entry and exit apply a commission
+                            # rate of 1 (for now)
+                            reward = ((move_to_close['entry_price'] - move_to_close['exit_price']) *
+                                      reward_multiplier[self.instrument]) - 1 if action == 'buy' else (
+                                    ((move_to_close['exit_price'] - move_to_close['entry_price']) *
+                                     reward_multiplier[self.instrument]) - 1)
+                            balance_agents[actions_index] += reward
+                            agent_reward.append(balance_agents[actions_index])
+                        else:
+                            balance_agents[actions_index] -= 1
+                            agent_reward.append(balance_agents[actions_index])
+                else:
+                    agent_reward.append(balance_agents[actions_index])
+            returning_reward.append(agent_reward)
 
             # self.balance = sum(returning_reward)
 

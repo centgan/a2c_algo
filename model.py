@@ -18,9 +18,14 @@ class Agent:
         self.actor.compile(optimizer=Adam(learning_rate=alpha_actor))
         self.critic.compile(optimizer=Adam(learning_rate=alpha_critic))
 
+        self.balance = 0
+
         self.logger = logging.getLogger()
         logging.basicConfig(filename='log.log', level=logging.INFO,
                             format='%(asctime)s  %(levelname)s: %(message)s')
+
+    def update_balance(self, balance):
+        self.balance = balance
 
     def choose_action(self, observation):
         state = tf.convert_to_tensor(observation)
