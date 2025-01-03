@@ -362,7 +362,6 @@ class BatchIndicators:
         for i in range(self.year_indicator_shape[0]):
             arr[i] = outputting[i]
         arr.flush()
-        return outputting
 
     def rsi_calculate(self):
         period = 14

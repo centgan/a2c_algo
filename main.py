@@ -67,7 +67,6 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
     env = EnviroBatchProcess('NAS100_USD', '2011-01-03', '2020-02-03', 256)
-    # agent = Agent(alpha=0.0001, action_size=3)
     agent = Agent(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.6, action_size=3)
 
     load_checkpoint = False
@@ -79,6 +78,7 @@ if __name__ == '__main__':
     action_mapping = ['sell', 'hold', 'buy']
     while not env.done:
         actions = agent.choose_action(observation)
+        # print(actions)
         observation_, reward_real = env.step(action_mapping[action] for action in actions)
 
         if not load_checkpoint:
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         observation = observation_
 
         if env.balance != pre_balance:
-            print(round(env.balance, 2), round(env.year_time_step / len(env.year_data) * 100, 2))
+            print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
         pre_balance = env.balance
         if env.balance > highest_balance and not load_checkpoint:
             env.balance = balance

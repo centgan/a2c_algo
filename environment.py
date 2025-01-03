@@ -1,3 +1,5 @@
+import os
+
 import requests
 import pandas as pd
 import time
@@ -37,9 +39,9 @@ class EnviroBatchProcess:
 
         self.year_data_shape = ()
         self.year_data_filename = 'year_data.dat'
-        self.fetch_current_year_data()
+        # self.fetch_current_year_data()
+        self.fetch_all_years_data()
         self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True)
-
         self.env_out = self.get_env_state()
 
     def fetch_current_year_data(self, year=None):
@@ -50,7 +52,7 @@ class EnviroBatchProcess:
 
         self.first_date = datetime.strptime(data[0][-1][:19], '%Y-%m-%d %H:%M:%S')
         uncompressed_data = []
-        # padded = np.array([sublist + [None] * (5 - len(sublist)) for sublist in data], dtype=object)
+
         for candle in data:
             candle_to_append = self.decompress(candle)
             if len(uncompressed_data) == 0:
@@ -68,6 +70,40 @@ class EnviroBatchProcess:
 
         uncompressed_data = np.array(uncompressed_data)
         self.year_data_shape = uncompressed_data.shape
+        arr = np.memmap(self.year_data_filename, dtype=object, mode='w+', shape=self.year_data_shape)
+        for i in range(self.year_data_shape[0]):
+            arr[i] = uncompressed_data[i]
+        arr.flush()
+
+    def fetch_all_years_data(self):
+        uncompressed_data = []
+        for year in range(self.train_start.year, self.train_end.year + 1):
+            with open(f'./data/full_training_data_{year}.json', 'r') as f:
+                data = json.load(f)
+
+            self.first_date = datetime.strptime(data[0][-1][:19], '%Y-%m-%d %H:%M:%S')
+
+            for candle in data:
+                candle_to_append = self.decompress(candle)
+                if len(uncompressed_data) == 0:
+                    uncompressed_data.append(candle_to_append)
+                    continue
+                second_difference_to_previous = candle_to_append[-1] - uncompressed_data[-1][-1]
+                minute_difference_to_previous = (second_difference_to_previous.total_seconds() / 60) - 1
+                duplicate_candle = []
+                for i in range(int(minute_difference_to_previous)):
+                    hold = uncompressed_data[-1].copy()
+                    hold[-1] = hold[-1] + timedelta(minutes=i + 1)
+                    duplicate_candle.append(hold)
+                uncompressed_data.extend(duplicate_candle)
+                uncompressed_data.append(candle_to_append)
+        padding_required = 256 - (len(uncompressed_data) % 256)
+        # print(len(uncompressed_data), padding_required)
+        padding = [[0, 0, 0, 0, '0']] * padding_required
+        uncompressed_data.extend(padding)
+        uncompressed_data = np.array(uncompressed_data)
+        self.year_data_shape = uncompressed_data.shape
+        # print(self.year_data_shape)
         arr = np.memmap(self.year_data_filename, dtype=object, mode='w+', shape=self.year_data_shape)
         for i in range(self.year_data_shape[0]):
             arr[i] = uncompressed_data[i]
@@ -117,6 +153,7 @@ class EnviroBatchProcess:
     # actions is a list of 256
     def step(self, actions):
         # fetch the data for the next year
+        year_data = np.memmap(self.year_data_filename, dtype=object, mode='r', shape=self.year_data_shape)
         if self.year_time_step >= self.year_data_shape[0]:
             self.current_year += 1
             if self.current_year >= self.train_end.year:
@@ -143,19 +180,19 @@ class EnviroBatchProcess:
             if action != 'hold':
                 if len(self.orders['open']) == 0:
                     self.orders['open'].append({
-                        'entry_datetime': self.year_data[self.year_time_step+action_index][-1],
+                        'entry_datetime': year_data[self.year_time_step+action_index][-1],
                         'exit_datetime': '',
-                        'entry_price': self.year_data[self.year_time_step+action_index][-2],
+                        'entry_price': year_data[self.year_time_step+action_index][-2],
                         'exit_price': '',
                         'order': action
                     })
-                    returning_reward.append(-1)  # commission for now is 1
-                    self.balance -= 1
+                    self.balance -= 1  # commission for now is 1
+                    returning_reward.append(self.balance)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
                         move_to_close = self.orders['open'].pop()
-                        move_to_close['exit_datetime'] = self.year_data[self.year_time_step+action_index][-1]
-                        move_to_close['exit_price'] = self.year_data[self.year_time_step+action_index][-2]
+                        move_to_close['exit_datetime'] = year_data[self.year_time_step+action_index][-1]
+                        move_to_close['exit_price'] = year_data[self.year_time_step+action_index][-2]
                         self.orders['closed'].append(move_to_close)
                         # this reward below just calculates the difference between entry and exit apply a commission
                         # rate of 1 (for now)
@@ -163,15 +200,17 @@ class EnviroBatchProcess:
                                   reward_multiplier[self.instrument]) - 1 if action == 'buy' else (
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
                                  reward_multiplier[self.instrument]) - 1)
-                        returning_reward.append(reward)
                         self.balance += reward
+                        returning_reward.append(self.balance)
                     else:
-                        returning_reward.append(-1)
                         self.balance -= 1
+                        returning_reward.append(self.balance)
             else:
-                returning_reward.append(0)
-            self.balance = sum(returning_reward)
+                returning_reward.append(self.balance)
 
+            # self.balance = sum(returning_reward)
+
+        # print(returning_reward)
         # updating state space to get next batch ie [:256] => [256:512]
         self.year_time_step += self.batch_size
         self.env_out = self.get_env_state()
