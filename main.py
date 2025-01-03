@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import time
 import concurrent.futures as cf
 from datetime import timedelta, datetime
+import numpy as np
 
 ALPHA_ACTOR = 0.0001
 ALPHA_CRITIC = 0.001

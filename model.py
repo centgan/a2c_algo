@@ -6,7 +6,7 @@ import logging
 
 
 class Agent:
-    def __init__(self, alpha_actor=1, alpha_critic=1, gamma=0.99, action_size=1):
+    def __init__(self, alpha_actor=1., alpha_critic=1., gamma=0.99, action_size=1):
         self.action_size = action_size
         self.gamma = gamma
         self.action = None
@@ -29,30 +29,15 @@ class Agent:
 
     def choose_action(self, observation):
         state = tf.convert_to_tensor(observation)
-        # start = time.time()
         probs = self.actor.call(state)
+        probs = probs / tf.reduce_sum(probs, axis=1, keepdims=True)
 
-        # actor_time = time.time()
-        # print("---to actor call----: ", actor_time - start)
         action_probs = tfp.distributions.Categorical(probs=probs)
-        # probs_numpy = probs.numpy()[0]
-        # cumulative_probs = np.cumsum(probs_numpy)
-        # # Generate a random number
-        # random_value = np.random.rand()
-        # # Find the category based on the random value
-        # for i, cumulative_prob in enumerate(cumulative_probs):
-        #     if random_value < cumulative_prob:
-        #         action = i
-        #         print(i)
-        #         break
-        # print("---to distribution----: ", time.time() - actor_time)
-        # print(action_probs)
         action = action_probs.sample()
 
         self.action = action
-        # print(action)
 
-        return action.numpy()[0]
+        return action.numpy()
 
     def learn(self, state,  reward, state_):
         state = tf.convert_to_tensor(state, dtype=tf.float32)
