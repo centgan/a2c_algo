@@ -319,7 +319,7 @@ class Indicators:
 
 class BatchIndicators:
     def __init__(self, year_data_filename, year_data_shape, rsi_flag=False, mac_flag=False, ob_flag=False, fvg_flag=False, news_flag=False):
-        self.list_data = np.memmap(year_data_filename, dtype=object, mode='r', shape=year_data_shape)
+        self.list_data = np.memmap(year_data_filename, dtype='float32', mode='r', shape=year_data_shape)
         self.rsi_flag = rsi_flag
         self.mac_flag = mac_flag
         self.ob_flag = ob_flag

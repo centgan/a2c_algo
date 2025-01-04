@@ -38,7 +38,7 @@ if __name__ == '__main__':
     action_mapping = ['sell', 'hold', 'buy']
     while not env.done:
         actions = agent.choose_action(observation)
-        # print(actions)
+        print(actions)
         observation_, reward_real = env.step(action_mapping[action] for action in actions)
 
         if not load_checkpoint:
