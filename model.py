@@ -24,9 +24,6 @@ class Agent:
         logging.basicConfig(filename='log.log', level=logging.INFO,
                             format='%(asctime)s  %(levelname)s: %(message)s')
 
-    def update_balance(self, balance):
-        self.balance = balance
-
     def choose_action(self, observation):
         state = tf.convert_to_tensor(observation)
         probs = self.actor.call(state)

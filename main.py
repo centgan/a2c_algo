@@ -27,10 +27,7 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
     env = EnviroBatchProcess('NAS100_USD', '2011-01-03', '2020-02-03', 256)
-    agent1 = Agent(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.6, action_size=3)
-    agent2 = Agent(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.6, action_size=3)
-    agent3 = Agent(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.6, action_size=3)
-    agents = [agent1, agent2, agent3]
+    agent = Agent(alpha_actor=0.0001, alpha_critic=0.00001, gamma=0.8, action_size=3)
 
     load_checkpoint = False
 
@@ -40,25 +37,19 @@ if __name__ == '__main__':
     highest_balance = 0
     action_mapping = ['sell', 'hold', 'buy']
     while not env.done:
-        actions = []
-        for agent in agents:
-            batch_action = agent.choose_action(observation)
-            actions.append(action_mapping[batch_single_action] for batch_single_action in batch_action)
-        # actions = agent.choose_action(observation)
+        actions = agent.choose_action(observation)
         # print(actions)
-        observation_, reward_real = env.step(actions, [agent.balance for agent in agents])
+        observation_, reward_real = env.step(action_mapping[action] for action in actions)
 
         if not load_checkpoint:
-            for agent_index, agent in enumerate(agents):
-                agent.learn(observation, reward_real[agent_index], observation_)
-                agent.update_balance(reward_real[agent_index][-1])
-                # if agent.balance != pre_balance:
-                print(round(agent.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5), agent_index)
-                pre_balance = agent.balance
-                if agent.balance > highest_balance and not load_checkpoint:
-                    agent.balance = balance
-                    agent.save_model()
-        observation = observation_
+            agent.learn(observation, reward_real, observation_)
 
+        observation = observation_
+        if env.balance != pre_balance:
+            print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
+        pre_balance = env.balance
+        if env.balance > highest_balance and not load_checkpoint:
+            highest_balance = env.balance
+            agent.save_model()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
