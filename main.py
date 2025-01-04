@@ -49,7 +49,7 @@ if __name__ == '__main__':
             print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
         pre_balance = env.balance
         if env.balance > highest_balance and not load_checkpoint:
-            env.balance = balance
+            highest_balance = env.balance
             agent.save_model()
 
 

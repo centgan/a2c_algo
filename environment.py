@@ -37,7 +37,7 @@ class EnviroBatchProcess:
         self.year_time_step = 60  # keeps track of which index in the year currently on
         self.balance = 0
         self.done = False
-        self.commission = 0
+        self.commission = 0.5
 
         self.year_data_shape = ()
         self.year_data_filename = 'year_data.dat'
@@ -208,7 +208,7 @@ class EnviroBatchProcess:
                         self.balance += reward
                         returning_reward.append(self.balance)
                     else:
-                        self.balance -= self.commission
+                        # self.balance -= self.commission
                         returning_reward.append(self.balance)
             else:
                 returning_reward.append(self.balance)
