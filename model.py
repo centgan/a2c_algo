@@ -54,7 +54,7 @@ class Agent:
             log_prob = action_probs.log_prob(state_val)
             # print('log probs: ' + str(log_prob))
 
-            delta = reward + self.gamma * state_val_ - state_val
+            delta = reward + self.gamma * (state_val_ - state_val)
             actor_loss = -log_prob * delta
             critic_loss = delta ** 2
             # total_loss = actor_loss + critic_loss

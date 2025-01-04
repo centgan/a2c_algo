@@ -11,13 +11,13 @@ import concurrent.futures as cf
 from datetime import timedelta, datetime
 import numpy as np
 
-ALPHA_ACTOR = 0.0001
-ALPHA_CRITIC = 0.001
-GAMMA = 0.6
+ALPHA_ACTOR = 0.00001
+ALPHA_CRITIC = 0.00001
+GAMMA = 0.7
 ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
-
+EPOCHES = 10
 
 if __name__ == '__main__':
     start_training = '2011-01-03'
@@ -26,30 +26,34 @@ if __name__ == '__main__':
     start_date = datetime.strptime(start_training, '%Y-%m-%d')
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
-    env = EnviroBatchProcess('NAS100_USD', '2011-01-03', '2020-02-03', 256)
-    agent = Agent(alpha_actor=0.0001, alpha_critic=0.00001, gamma=0.8, action_size=3)
+    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
+    for epoch in range(EPOCHES):
 
-    load_checkpoint = False
+        env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', 256)
 
-    observation = env.env_out
-    balance = 0
-    pre_balance = 0
-    highest_balance = 0
-    action_mapping = ['sell', 'hold', 'buy']
-    while not env.done:
-        actions = agent.choose_action(observation)
-        print(actions)
-        observation_, reward_real = env.step(action_mapping[action] for action in actions)
+        observation = env.env_out
+        balance = 0
+        pre_balance = 0
+        highest_balance = 0
+        action_mapping = ['sell', 'hold', 'buy']
+        while not env.done:
+            actions = agent.choose_action(observation)
+            # print(actions)
+            observation_, reward_real = env.step(action_mapping[action] for action in actions)
+            if observation_ == []:
+                continue
 
-        if not load_checkpoint:
-            agent.learn(observation, reward_real, observation_)
+            if not LOAD_CHECK:
+                agent.learn(observation, reward_real, observation_)
 
-        observation = observation_
-        if env.balance != pre_balance:
+            observation = observation_
+            # if env.balance != pre_balance:
             print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
-        pre_balance = env.balance
-        if env.balance > highest_balance and not load_checkpoint:
-            highest_balance = env.balance
-            agent.save_model()
+            pre_balance = env.balance
+            if env.balance > highest_balance and not LOAD_CHECK:
+                highest_balance = env.balance
+                agent.save_model()
+        print(f'epoch #{epoch} finished running current balance is {env.balance}')
+    print('training complete final reward: ', env.balance)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

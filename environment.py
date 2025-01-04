@@ -27,8 +27,6 @@ class EnviroBatchProcess:
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
         self.batch_size = batch_size
 
-        self.current_year = self.train_start.year
-
         self.start_opening = 0  # this is opening price for compression and decompression
         self.first_date = datetime.now()  # just as a placeholder for opening date for compression and decompression
 
@@ -142,7 +140,10 @@ class EnviroBatchProcess:
 
     def get_env_state(self):
         returning_batch = []
-        end_index = self.year_data_shape[0] if self.year_time_step + self.batch_size > self.year_data_shape[0] else self.year_time_step + self.batch_size
+        if self.year_time_step + self.batch_size > self.year_data_shape[0]:
+            self.done = True
+            return []
+        end_index = self.year_time_step + self.batch_size
         year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
         year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype='float32', mode='r', shape=self.indicator_class.year_indicator_shape)
         for i in range(self.year_time_step, end_index):
@@ -159,11 +160,7 @@ class EnviroBatchProcess:
         # fetch the data for the next year
         year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
         if self.year_time_step >= self.year_data_shape[0]:
-            self.current_year += 1
-            if self.current_year >= self.train_end.year:
-                self.done = True
-            self.fetch_current_year_data()
-            self.indicator_class.batch_process()
+            self.done = True
 
             # once after running through the entire year's data will write all the orders to a file
             with open('orders.json', 'w') as write:
