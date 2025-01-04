@@ -27,7 +27,7 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
     env = EnviroBatchProcess('NAS100_USD', '2011-01-03', '2020-02-03', 1)
-    agent = Agent(alpha_actor=0.0001, alpha_critic=0.001, gamma=0.6, action_size=3)
+    agent = Agent(alpha_actor=0.0001, alpha_critic=0.00001, gamma=0.8, action_size=3)
 
     load_checkpoint = False
 
