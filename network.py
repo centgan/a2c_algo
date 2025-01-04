@@ -1,6 +1,6 @@
 import os
 import tensorflow.keras as keras
-from tensorflow.keras.layers import Dense, LSTM, LeakyReLU
+from tensorflow.keras.layers import Dense, LSTM, LeakyReLU, Dropout
 from tensorflow.keras import Sequential
 
 
@@ -19,6 +19,7 @@ class ActorNetwork(keras.Model):
             LeakyReLU(negative_slope=0.05),
             LSTM(self.dims_2,return_sequences=False),
             LeakyReLU(negative_slope=0.05),
+            Dropout(0.2),
             Dense(self.action_size, activation='softmax'),
         ])
 
@@ -42,6 +43,7 @@ class CriticNetwork(keras.Model):
             LeakyReLU(negative_slope=0.05),
             LSTM(self.dims_2, return_sequences=False),
             LeakyReLU(negative_slope=0.05),
+            Dropout(0.2),
             Dense(1, activation='tanh'),
         ])
 
