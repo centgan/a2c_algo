@@ -34,15 +34,17 @@ class EnviroBatchProcess:
 
         self.orders = {"open": [], "closed": []}
         self.year_time_step = 60  # keeps track of which index in the year currently on
-        self.done = False
-
         self.balance = 0
-        self.commission = 0
+        self.done = False
+        self.commission = 0.5
 
         self.year_data_shape = ()
         self.year_data_filename = 'year_data.dat'
         # self.fetch_current_year_data()
-        self.fetch_all_years_data()
+        if not os.path.exists(self.year_data_filename):
+            self.fetch_all_years_data()
+        else:
+            self.year_data_shape = (4777984, 5)
         self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True)
         self.env_out = self.get_env_state()
 
@@ -90,23 +92,23 @@ class EnviroBatchProcess:
                 if len(uncompressed_data) == 0:
                     uncompressed_data.append(candle_to_append)
                     continue
-                second_difference_to_previous = candle_to_append[-1] - uncompressed_data[-1][-1]
-                minute_difference_to_previous = (second_difference_to_previous.total_seconds() / 60) - 1
+                minute_difference_to_previous = ((candle_to_append[-1] - uncompressed_data[-1][-1]) / 60) - 1
                 duplicate_candle = []
                 for i in range(int(minute_difference_to_previous)):
                     hold = uncompressed_data[-1].copy()
-                    hold[-1] = hold[-1] + timedelta(minutes=i + 1)
+                    hold[-1] = hold[-1] + ((i+1)*60)
                     duplicate_candle.append(hold)
                 uncompressed_data.extend(duplicate_candle)
                 uncompressed_data.append(candle_to_append)
         padding_required = self.batch_size - (len(uncompressed_data) % self.batch_size)
         # print(len(uncompressed_data), padding_required)
-        padding = [[0, 0, 0, 0, datetime.now()]] * padding_required
+        padding = [[0, 0, 0, 0, 0]] * padding_required
         uncompressed_data.extend(padding)
         uncompressed_data = np.array(uncompressed_data)
+        print(uncompressed_data.shape)
         self.year_data_shape = uncompressed_data.shape
-        print(self.year_data_shape)
-        arr = np.memmap(self.year_data_filename, dtype=object, mode='w+', shape=self.year_data_shape)
+
+        arr = np.memmap(self.year_data_filename, dtype='float32', mode='w+', shape=self.year_data_shape)
         for i in range(self.year_data_shape[0]):
             arr[i] = uncompressed_data[i]
         arr.flush()
@@ -121,7 +123,7 @@ class EnviroBatchProcess:
 
             # separate it into 2 variables to make sure that if error is thrown self.first_date isn't changed
             self.first_date = multi_start_date
-            ret_candle[-1] = self.first_date
+            ret_candle[-1] = self.first_date.timestamp()
 
             self.start_opening = candle[0]
             ret_candle[0] = self.start_opening
@@ -130,7 +132,7 @@ class EnviroBatchProcess:
             ret_candle[3] = round(self.start_opening - candle[3], 2)
 
         except ValueError:
-            ret_candle[-1] = self.first_date - timedelta(minutes=int(candle[-1]))
+            ret_candle[-1] = (self.first_date - timedelta(minutes=int(candle[-1]))).timestamp()
             ret_candle[0] = round(self.start_opening - candle[0], 2)
             ret_candle[1] = round(self.start_opening - candle[1], 2)
             ret_candle[2] = round(self.start_opening - candle[2], 2)
@@ -141,11 +143,11 @@ class EnviroBatchProcess:
     def get_env_state(self):
         returning_batch = []
         end_index = self.year_data_shape[0] if self.year_time_step + self.batch_size > self.year_data_shape[0] else self.year_time_step + self.batch_size
-        year_data = np.memmap(self.year_data_filename, dtype=object, mode='r', shape=self.year_data_shape)
+        year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
         year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype='float32', mode='r', shape=self.indicator_class.year_indicator_shape)
         for i in range(self.year_time_step, end_index):
             individual_batch = np.array(year_data[i-60:i])
-            individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
+            # individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
 
             for j in year_indicators:
                 individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
@@ -153,9 +155,9 @@ class EnviroBatchProcess:
         return np.array(returning_batch, dtype=np.float32)
 
     # actions is a list of 256
-    def step(self, actions_agents):
+    def step(self, actions):
         # fetch the data for the next year
-        year_data = np.memmap(self.year_data_filename, dtype=object, mode='r', shape=self.year_data_shape)
+        year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
         if self.year_time_step >= self.year_data_shape[0]:
             self.current_year += 1
             if self.current_year >= self.train_end.year:
@@ -209,6 +211,8 @@ class EnviroBatchProcess:
                         returning_reward.append(self.balance)
             else:
                 returning_reward.append(self.balance)
+
+            # self.balance = sum(returning_reward)
 
         # print(returning_reward)
         # updating state space to get next batch ie [:256] => [256:512]

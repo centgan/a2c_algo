@@ -1,6 +1,7 @@
 # somehow may also need to get in the economic canlendar in here. It also might be a good idea to just iterate through
 # the entire training time and just pre pull the data rather than requesting and then working.
 # Data should be the previous 60 days worth of data with the most recent being at the end of the list
+import os
 
 import pandas as pd
 import numpy as np
@@ -342,7 +343,10 @@ class BatchIndicators:
         self.fvgs_down_last_values = []
         self.news_last_values = []
 
-        self.batch_process()
+        if not os.path.exists(self.year_indicator_filename):
+            self.batch_process()
+        else:
+            self.year_indicator_shape = (2, 4777984)
 
     def batch_process(self):
         outputting = []
