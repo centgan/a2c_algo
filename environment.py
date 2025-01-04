@@ -142,7 +142,7 @@ class EnviroBatchProcess:
         returning_batch = []
         if self.year_time_step + self.batch_size > self.year_data_shape[0]:
             self.done = True
-            return []
+            return np.array([])
         end_index = self.year_time_step + self.batch_size
         year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
         year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype='float32', mode='r', shape=self.indicator_class.year_indicator_shape)

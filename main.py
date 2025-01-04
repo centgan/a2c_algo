@@ -40,7 +40,7 @@ if __name__ == '__main__':
             actions = agent.choose_action(observation)
             # print(actions)
             observation_, reward_real = env.step(action_mapping[action] for action in actions)
-            if observation_ == []:
+            if observation_.size == 0:
                 continue
 
             if not LOAD_CHECK:
