@@ -88,13 +88,25 @@ class EnviroBatchProcess:
             for candle in data:
                 candle_to_append = self.decompress(candle)
                 if len(uncompressed_data) == 0:
-                    uncompressed_data.append(candle_to_append)
+                    if candle_to_append[-1] == self.train_start.timestamp():
+                        uncompressed_data.append(candle_to_append)
+                    else:
+                        difference_to_start = ((candle_to_append[-1] - self.train_start.timestamp()) / 60) - 1
+                        start_candle = candle_to_append.copy()
+                        start_candle[-1] = self.train_start.timestamp()
+                        beginning_candles = [start_candle]
+                        for i in range(int(difference_to_start)):
+                            hold = start_candle.copy()
+                            hold[-1] += ((i+1)*60)
+                            beginning_candles.append(hold)
+                        uncompressed_data.extend(beginning_candles)
+                        uncompressed_data.append(candle_to_append)
                     continue
                 minute_difference_to_previous = ((candle_to_append[-1] - uncompressed_data[-1][-1]) / 60) - 1
                 duplicate_candle = []
                 for i in range(int(minute_difference_to_previous)):
                     hold = uncompressed_data[-1].copy()
-                    hold[-1] = hold[-1] + ((i+1)*60)
+                    hold[-1] += ((i+1)*60)
                     duplicate_candle.append(hold)
                 uncompressed_data.extend(duplicate_candle)
                 uncompressed_data.append(candle_to_append)
@@ -106,7 +118,7 @@ class EnviroBatchProcess:
         print(uncompressed_data.shape)
         self.year_data_shape = uncompressed_data.shape
 
-        arr = np.memmap(self.year_data_filename, dtype='float32', mode='w+', shape=self.year_data_shape)
+        arr = np.memmap(self.year_data_filename, dtype=np.float64, mode='w+', shape=self.year_data_shape)
         for i in range(self.year_data_shape[0]):
             arr[i] = uncompressed_data[i]
         arr.flush()
