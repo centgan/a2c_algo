@@ -17,7 +17,7 @@ GAMMA = 0.7
 ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
-EPOCHES = 10
+EPOCHES = 2
 
 if __name__ == '__main__':
     start_training = '2011-01-03'
@@ -28,7 +28,6 @@ if __name__ == '__main__':
 
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
     for epoch in range(EPOCHES):
-
         env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', 256)
 
         observation = env.env_out
