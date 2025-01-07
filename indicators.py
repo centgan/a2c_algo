@@ -353,7 +353,7 @@ class BatchIndicators:
         if self.mac_flag:
             outputting.append(self.mac_calculate())
         if self.ob_flag:
-            self.ob_calculate()
+            outputting.append(self.ob_calculate())
         if self.fvg_flag:
             outputting.append(self.fvg_calculate())
         if self.news_flag:
