@@ -362,7 +362,7 @@ class BatchIndicators:
         outputting = np.array(outputting)
         self.year_indicator_shape = outputting.shape
         print(self.year_indicator_shape)
-        arr = np.memmap(self.year_indicator_filename, dtype='float32', mode='w+', shape=self.year_indicator_shape)
+        arr = np.memmap(self.year_indicator_filename, dtype=np.float64, mode='w+', shape=self.year_indicator_shape)
         for i in range(self.year_indicator_shape[0]):
             arr[i] = outputting[i]
         arr.flush()

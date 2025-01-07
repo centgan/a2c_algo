@@ -37,9 +37,9 @@ class Agent:
         return action.numpy()
 
     def learn(self, state,  reward, state_):
-        state = tf.convert_to_tensor(state, dtype=tf.float32)
-        state_ = tf.convert_to_tensor(state_, dtype=tf.float32)
-        reward = tf.convert_to_tensor(reward, dtype=tf.float32)
+        state = tf.convert_to_tensor(state, dtype=tf.float64)
+        state_ = tf.convert_to_tensor(state_, dtype=tf.float64)
+        reward = tf.convert_to_tensor(reward, dtype=tf.float64)
         with tf.GradientTape(persistent=True) as tape:
             # state_val, probs = self.actor_critic.call(state)
             state_val = self.critic.call(state)

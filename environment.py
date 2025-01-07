@@ -156,8 +156,8 @@ class EnviroBatchProcess:
             self.done = True
             return np.array([])
         end_index = self.year_time_step + self.batch_size
-        year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
-        year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype='float32', mode='r', shape=self.indicator_class.year_indicator_shape)
+        year_data = np.memmap(self.year_data_filename, dtype=np.float64, mode='r', shape=self.year_data_shape)
+        year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype=np.float64, mode='r', shape=self.indicator_class.year_indicator_shape)
         for i in range(self.year_time_step, end_index):
             individual_batch = np.array(year_data[i-60:i])
             # individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
@@ -165,12 +165,12 @@ class EnviroBatchProcess:
             for j in year_indicators:
                 individual_batch = np.column_stack((individual_batch, np.array(j[i-60:i])))
             returning_batch.append(individual_batch)
-        return np.array(returning_batch, dtype=np.float32)
+        return np.array(returning_batch, dtype=np.float64)
 
     # actions is a list of 256
     def step(self, actions):
         # fetch the data for the next year
-        year_data = np.memmap(self.year_data_filename, dtype='float32', mode='r', shape=self.year_data_shape)
+        year_data = np.memmap(self.year_data_filename, dtype=np.float64, mode='r', shape=self.year_data_shape)
         if self.year_time_step >= self.year_data_shape[0]:
             self.done = True
 
