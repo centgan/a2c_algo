@@ -21,11 +21,15 @@ TOKEN = "d8e783a23ff8bab21476e440b3d578ef-207d5f7676d7d82839a50d4907b3d6e6"
 
 
 class EnviroBatchProcess:
-    def __init__(self, instrument, train_start, train_end, batch_size):
+    def __init__(self, instrument, train_start, train_end, batch_size, testing=False):
         self.instrument = instrument
         self.train_start = datetime.strptime(train_start, "%Y-%m-%d")
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
         self.batch_size = batch_size
+        if testing:
+            self.path_to_data = './data/test_data/full_training_data_'
+        else:
+            self.path_to_data = './data/full_training_data_'
 
         self.start_opening = 0  # this is opening price for compression and decompression
         self.first_date = datetime.now()  # just as a placeholder for opening date for compression and decompression
@@ -37,18 +41,18 @@ class EnviroBatchProcess:
         self.commission = 0.5
 
         self.year_data_shape = ()
-        self.year_data_filename = 'year_data.dat'
+        self.year_data_filename = 'train_year_data.dat' if not testing else 'test_year_data.dat'
         # self.fetch_current_year_data()
         if not os.path.exists(self.year_data_filename):
             self.fetch_all_years_data()
         else:
-            self.year_data_shape = (4777984, 5)
-        self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True)
+            self.year_data_shape = (4777984, 5) if not testing else (2580736, 5)
+        self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True, testing=testing)
         self.env_out = self.get_env_state()
 
     def fetch_current_year_data(self, year=None):
         self.current_year = year if year else self.current_year
-        with open(f'./data/full_training_data_{self.current_year}.json', 'r') as f:
+        with open(self.path_to_data + self.current_year + '.json', 'r') as f:
             # data is of json type because iterating through it all is not that slow.
             data = json.load(f)
 
@@ -80,7 +84,7 @@ class EnviroBatchProcess:
     def fetch_all_years_data(self):
         uncompressed_data = []
         for year in range(self.train_start.year, self.train_end.year + 1):
-            with open(f'./data/full_training_data_{year}.json', 'r') as f:
+            with open(self.path_to_data + str(year) + '.json', 'r') as f:
                 data = json.load(f)
 
             self.first_date = datetime.strptime(data[0][-1][:19], '%Y-%m-%d %H:%M:%S')
