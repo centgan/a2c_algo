@@ -15,6 +15,7 @@ GAMMA = 0.7
 ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
+INDICATOR = [1, 1, 0, 0, 1]  # same here rsi, mac, ob, fvg, news
 
 if __name__ == '__main__':
     start_training = '2020-02-04'
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     if LOAD_CHECK:
         agent.load_model()
 
-    env = EnviroBatchProcess(INSTRUMENT, start_training, end_training, 256, testing=True)
+    env = EnviroBatchProcess(INSTRUMENT, start_training, end_training, 256, testing=True, indicator_select=INDICATOR)
     observation = env.env_out
     balance = 0
     pre_balance = 0

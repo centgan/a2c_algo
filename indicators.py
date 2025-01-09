@@ -31,18 +31,18 @@ def calculate_ema(prices, period):
 
 
 class BatchIndicators:
-    def __init__(self, year_data_filename, year_data_shape, rsi_flag=False, mac_flag=False, ob_flag=False,
-                 fvg_flag=False, news_flag=False, testing=False):
+    def __init__(self, year_data_filename, year_data_shape, indicator_flag, testing=False):
+
         self.year_data_shape = year_data_shape
         self.list_data = np.memmap(year_data_filename, dtype=np.float64, mode='r', shape=self.year_data_shape)
-        self.rsi_flag = rsi_flag
-        self.mac_flag = mac_flag
-        self.ob_flag = ob_flag
-        self.fvg_flag = fvg_flag
-        self.news_flag = news_flag
+        self.rsi_flag = indicator_flag[0]
+        self.mac_flag = indicator_flag[1]
+        self.ob_flag = indicator_flag[2]
+        self.fvg_flag = indicator_flag[3]
+        self.news_flag = indicator_flag[4]
 
-        self.year_indicator_filename = 'train_year_indicator.dat' if not testing else 'test_year_indicator.dat'
-        self.year_indicator_shape = ()
+        self.indicator_directory = './indicators/test/' if testing else './indicators/train/'
+        self.year_indicator_length = 2580736 if testing else 4777984
 
         self.rsi_need = []
         self.mac_need = []
@@ -51,32 +51,46 @@ class BatchIndicators:
         self.eco_news['Time'] = self.eco_news['Time'].dt.strftime('%H:%M:%S')
         self.eco_news['Datetime'] = pd.to_datetime(self.eco_news['Date'] + ' ' + self.eco_news['Time'])
 
-        if not os.path.exists(self.year_indicator_filename):
-            self.batch_process()
-        else:
-            first_shape = int(sum([self.rsi_flag, self.mac_flag, self.ob_flag, self.fvg_flag, self.news_flag]))
-            self.year_indicator_shape = (first_shape, 4777984) if not testing else (first_shape, 2580736)
+        self.batch_process()
 
     def batch_process(self):
-        outputting = []
         if self.rsi_flag:
-            outputting.append(self.rsi_calculate())
+            if not os.path.isfile(self.indicator_directory + 'rsi_data.dat'):
+                arr = np.memmap(self.indicator_directory + 'rsi_data.dat', dtype=np.float64, mode='w+',
+                                shape=(self.year_indicator_length,))
+                rsi_data = self.rsi_calculate()
+                arr[:] = rsi_data
+                arr.flush()
         if self.mac_flag:
-            outputting.append(self.mac_calculate())
+            if not os.path.isfile(self.indicator_directory + 'mac_data.dat'):
+                arr = np.memmap(self.indicator_directory + 'mac_data.dat', dtype=np.float64, mode='w+',
+                                shape=(self.year_indicator_length,))
+                mac_data = self.mac_calculate()
+                arr[:] = mac_data
+                arr.flush()
         if self.ob_flag:
-            outputting.append(self.ob_calculate())
+            if not os.path.isfile(self.indicator_directory + 'ob_data.dat'):
+                arr = np.memmap(self.indicator_directory + 'ob_data.dat', dtype=np.float64, mode='w+',
+                                shape=(self.year_indicator_length, 10))
+                ob_data = self.ob_calculate()
+                for i in range(len(ob_data)):
+                    arr[i] = ob_data[i]
+                arr.flush()
         if self.fvg_flag:
-            outputting.append(self.fvg_calculate())
+            if not os.path.isfile(self.indicator_directory + 'fvg_data.dat'):
+                arr = np.memmap(self.indicator_directory + 'fvg_data.dat', dtype=np.float64, mode='w+',
+                                shape=(self.year_indicator_length, 20))
+                fvg_data = self.fvg_calculate()
+                for i in range(len(fvg_data)):
+                    arr[i] = fvg_data[i]
+                arr.flush()
         if self.news_flag:
-            outputting.append(self.news_calculate())
-
-        outputting = np.array(outputting)
-        self.year_indicator_shape = outputting.shape
-        print(self.year_indicator_shape)
-        arr = np.memmap(self.year_indicator_filename, dtype=np.float64, mode='w+', shape=self.year_indicator_shape)
-        for i in range(self.year_indicator_shape[0]):
-            arr[i] = outputting[i]
-        arr.flush()
+            if not os.path.isfile(self.indicator_directory + 'news_data.dat'):
+                arr = np.memmap(self.indicator_directory + 'news_data.dat', dtype=np.float64, mode='w+',
+                                shape=(self.year_indicator_length,))
+                news_data = self.news_calculate()
+                arr[:] = news_data
+                arr.flush()
 
     def rsi_calculate(self):
         period = 14
@@ -126,7 +140,7 @@ class BatchIndicators:
 
     def ob_calculate(self):
         overall_ob = []
-        ob_up_values = [0, 0, 0, 0, 0]
+        ob_up_values = [0, 0, 0, 0, 0]  # end result shape should be (length of data, 10)
         ob_down_values = [0, 0, 0, 0, 0]
         overall_ob.append(ob_up_values + ob_down_values)
         for i in range(1, self.year_data_shape[0] - 1):
@@ -164,7 +178,7 @@ class BatchIndicators:
     def fvg_calculate(self):
         overall_fvgs = []
         fvgs_up_values_hold = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        fvgs_down_values_hold = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        fvgs_down_values_hold = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # this ends up being of shape (len, 20)
         for i in range(2, self.year_data_shape[0]):
             high = self.list_data[i - 2, 1]  # High of current
             low = self.list_data[i - 2, 2]  # Low of current
@@ -177,10 +191,11 @@ class BatchIndicators:
                 fvgs_down_values_hold = fvgs_down_values_hold[2:]
                 fvgs_down_values_hold.extend([high, low_next])
 
-            overall_fvgs.append([fvgs_up_values_hold + fvgs_down_values_hold])
+            overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
         # append it 2 more times so that the last 2 candles also have access to the fvgs
-        overall_fvgs.append([fvgs_up_values_hold + fvgs_down_values_hold])
-        overall_fvgs.append([fvgs_up_values_hold + fvgs_down_values_hold])
+        overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
+        overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
+
         return overall_fvgs
 
     def news_calculate(self):

@@ -18,6 +18,10 @@ ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
 EPOCHES = 2
+# below is typical retail
+# INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
+# below is ict
+INDICATORS = [0, 0, 1, 1, 1]
 
 if __name__ == '__main__':
     start_training = '2011-01-03'
@@ -28,7 +32,7 @@ if __name__ == '__main__':
 
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
     for epoch in range(EPOCHES):
-        env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', 256)
+        env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', 256, indicator_select=INDICATORS)
 
         observation = env.env_out
         balance = 0

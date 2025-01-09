@@ -21,15 +21,15 @@ TOKEN = "d8e783a23ff8bab21476e440b3d578ef-207d5f7676d7d82839a50d4907b3d6e6"
 
 
 class EnviroBatchProcess:
-    def __init__(self, instrument, train_start, train_end, batch_size, testing=False):
+    def __init__(self, instrument, train_start, train_end, batch_size, indicator_select, testing=False):
         self.instrument = instrument
         self.train_start = datetime.strptime(train_start, "%Y-%m-%d")
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
         self.batch_size = batch_size
-        if testing:
-            self.path_to_data = './data/test_data/full_training_data_'
-        else:
-            self.path_to_data = './data/full_training_data_'
+        self.indicator_select = indicator_select
+
+        self.path_to_data = './data/test_data/full_training_data_' if testing else './data/full_training_data_'
+        self.path_to_indicator = './indicators/test/' if testing else './indicators/train/'
 
         self.start_opening = 0  # this is opening price for compression and decompression
         self.first_date = datetime.now()  # just as a placeholder for opening date for compression and decompression
@@ -47,7 +47,8 @@ class EnviroBatchProcess:
             self.fetch_all_years_data()
         else:
             self.year_data_shape = (4777984, 5) if not testing else (2580736, 5)
-        self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape, rsi_flag=True, mac_flag=True, testing=testing)
+        self.indicator_class = indicators.BatchIndicators(self.year_data_filename, self.year_data_shape,
+                                                          indicator_select, testing=testing)
         self.env_out = self.get_env_state()
 
     def fetch_current_year_data(self, year=None):
@@ -161,7 +162,17 @@ class EnviroBatchProcess:
             return np.array([])
         end_index = self.year_time_step + self.batch_size
         year_data = np.memmap(self.year_data_filename, dtype=np.float64, mode='r', shape=self.year_data_shape)
-        year_indicators = np.memmap(self.indicator_class.year_indicator_filename, dtype=np.float64, mode='r', shape=self.indicator_class.year_indicator_shape)
+
+        year_indicators = []
+        file_map = [self.path_to_indicator+'rsi_data.dat', self.path_to_indicator+'mac_data.dat',
+                    self.path_to_indicator+'ob_data.dat', self.path_to_indicator+'fvg_data.dat',
+                    self.path_to_indicator+'news_data.dat']
+        shape_map = [(self.year_data_shape[0],), (self.year_data_shape[0],), (self.year_data_shape[0], 10),
+                     (self.year_data_shape[0], 20), (self.year_data_shape[0],)]
+        for flag_index, flag in enumerate(self.indicator_select):
+            if flag:
+                year_indicators.append(np.memmap(file_map[flag_index], dtype=np.float64, mode='r', shape=shape_map[flag_index]))
+
         for i in range(self.year_time_step, end_index):
             individual_batch = np.array(year_data[i-60:i])
             # individual_batch[:, 4] = [dt.timestamp() for dt in individual_batch[:, 4]]
