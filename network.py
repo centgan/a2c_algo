@@ -1,10 +1,11 @@
 import os
-import tensorflow.keras as keras
-from tensorflow.keras.layers import Dense, LSTM, LeakyReLU
-from tensorflow.keras import Sequential
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 
-class ActorNetwork(keras.Model):
+class ActorNetwork(nn.Module):
     def __init__(self, action_size, dims_1=64, dims_2=32, name='actor', chkpt_dir='tmp/actor_critic'):
         super(ActorNetwork, self).__init__()
         self.dims_1 = dims_1
@@ -14,13 +15,13 @@ class ActorNetwork(keras.Model):
         self.checkpoint_dir = chkpt_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, self.model_name+'_first.weights.h5')
 
-        self.NN = Sequential([
-            LSTM(self.dims_1, return_sequences=True),
-            LeakyReLU(negative_slope=0.05),
-            LSTM(self.dims_2,return_sequences=False),
-            LeakyReLU(negative_slope=0.05),
-            Dense(self.action_size, activation='softmax'),
-        ])
+        self.NN = nn.Sequential(
+            nn.LSTM(self.dims_1, return_sequences=True),
+            nn.LeakyReLU(negative_slope=0.05),
+            nn.LSTM(self.dims_2,return_sequences=False),
+            nn.LeakyReLU(negative_slope=0.05),
+            nn.Linear(self.action_size, activation='softmax'),
+        )
 
     def call(self, state):
         pi = self.NN(state)
@@ -28,7 +29,7 @@ class ActorNetwork(keras.Model):
         return pi
 
 
-class CriticNetwork(keras.Model):
+class CriticNetwork(nn.Module):
     def __init__(self, dims_1=64, dims_2=32, name='critic', chkpt_dir='tmp/actor_critic'):
         super(CriticNetwork, self).__init__()
         self.dims_1 = dims_1
@@ -37,13 +38,14 @@ class CriticNetwork(keras.Model):
         self.checkpoint_dir = chkpt_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, self.model_name+'_first.weights.h5')
 
-        self.NN = Sequential([
-            LSTM(self.dims_1, return_sequences=True),
-            LeakyReLU(negative_slope=0.05),
-            LSTM(self.dims_2, return_sequences=False),
-            LeakyReLU(negative_slope=0.05),
-            Dense(1, activation='tanh'),
-        ])
+        self.NN = nn.Sequential(
+            nn.LSTM(self.dims_1, return_sequences=True),
+            nn.LeakyReLU(negative_slope=0.05),
+            nn.LSTM(self.dims_2, return_sequences=False),
+            nn.LeakyReLU(negative_slope=0.05),
+            nn.Linear(self.dims_2, 1),
+            nn.Tanh()
+        )
 
     def call(self, state):
         v = self.NN(state)
