@@ -30,7 +30,12 @@ if __name__ == '__main__':
     start_date = datetime.strptime(start_training, '%Y-%m-%d')
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
-    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
+    input_size = 5  # 60 past candles * 5 features (OHLC Date)
+    input_size += sum(INDICATORS[:2]) + INDICATORS[-1]  # rsi, macd and news all only add 1
+    input_size += 10 if INDICATORS[2] else 0  # 10 additional parameters for ob
+    input_size += 20 if INDICATORS[3] else 0  # 20 additional parameters for fvg
+
+    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE, input_size=input_size)
     for epoch in range(EPOCHES):
         env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', 256, indicator_select=INDICATORS)
 
