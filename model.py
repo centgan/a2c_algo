@@ -49,11 +49,14 @@ class Agent:
         probs = self.actor(state)
         state_val_ = self.critic(state_)
 
-        state_val = state_val.squeeze()
-        state_val_ = state_val_.squeeze()
+        state_val = state_val.squeeze(-1)
+        state_val_ = state_val_.squeeze(-1)
+        state_val = state_val[:, -1]  # Get value at the last time step (shape: [256])
+        state_val_ = state_val_[:, -1]
         action_probs = dist.Categorical(probs=probs)
+        actions = action_probs.sample()
 
-        log_prob = action_probs.log_prob(state_val)
+        log_prob = action_probs.log_prob(actions)
         delta = reward + self.gamma * state_val_ - state_val  # Compute the advantage (delta)
         actor_loss = -log_prob * delta  # Actor loss: negative log probability * advantage
         critic_loss = delta ** 2  # Critic loss: squared error of the advantage
@@ -63,11 +66,11 @@ class Agent:
         self.critic.optimizer.zero_grad()
 
         # Backpropagate for actor loss
-        actor_loss.backward()
+        actor_loss.mean().backward(retain_graph=True)
         self.actor.optimizer.step()
 
         # Backpropagate for critic loss
-        critic_loss.backward()
+        critic_loss.mean().backward()
         self.critic.optimizer.step()
 
 
