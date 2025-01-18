@@ -5,6 +5,7 @@ from network import ActorNetwork, CriticNetwork
 import logging
 import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Agent:
     def __init__(self, alpha_actor=1., alpha_critic=1., gamma=0.99, action_size=1, input_size=120):
@@ -13,8 +14,8 @@ class Agent:
         self.action = None
         self.action_space = [i for i in range(self.action_size)]
 
-        self.actor = ActorNetwork(action_size=action_size, input_size=input_size)
-        self.critic = CriticNetwork(input_size=input_size)
+        self.actor = ActorNetwork(action_size=action_size, input_size=input_size).to(device)
+        self.critic = CriticNetwork(input_size=input_size).to(device)
 
         self.actor.optimizer = Adam(self.actor.parameters(), lr=alpha_actor)
         self.critic.optimizer = Adam(self.critic.parameters(), lr=alpha_critic)
@@ -26,7 +27,7 @@ class Agent:
                             format='%(asctime)s  %(levelname)s: %(message)s')
 
     def choose_action(self, observation):
-        state = torch.tensor(observation, dtype=torch.float32)
+        state = torch.tensor(observation, dtype=torch.float32).to(device)
         probs = self.actor(state)
         probs = probs / probs.sum(dim=1, keepdim=True)
 
@@ -38,9 +39,9 @@ class Agent:
         return action.detach().cpu().numpy()
 
     def learn(self, state,  reward, state_):
-        state = torch.tensor(state, dtype=torch.float32)
-        state_ = torch.tensor(state_, dtype=torch.float32)
-        reward = torch.tensor(reward, dtype=torch.float32)
+        state = torch.tensor(state, dtype=torch.float32).to(device)
+        state_ = torch.tensor(state_, dtype=torch.float32).to(device)
+        reward = torch.tensor(reward, dtype=torch.float32).to(device)
 
         self.actor.train()
         self.critic.train()
