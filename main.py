@@ -32,7 +32,7 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_training, '%Y-%m-%d')
 
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-    if os.path.exists('./results'):
+    if not os.path.exists('./results'):
         os.mkdir('./results')
 
     for epoch in range(EPOCHES):
