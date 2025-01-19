@@ -42,6 +42,8 @@ class BatchIndicators:
         self.news_flag = indicator_flag[4]
 
         self.indicator_directory = './indicators/test/' if testing else './indicators/train/'
+        if not os.path.exists(self.indicator_directory):
+            os.makedirs(self.indicator_directory, exist_ok=True)
         self.year_indicator_length = 2580736 if testing else 4777984
 
         self.rsi_need = []
