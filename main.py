@@ -11,13 +11,13 @@ from tqdm import tqdm
 import json
 import os
 
-ALPHA_ACTOR = 0.00001
+ALPHA_ACTOR = 0.00007
 ALPHA_CRITIC = 0.00001
-GAMMA = 0.7
+GAMMA = 0.8
 ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
-EPOCHES = 2
+EPOCHES = 10
 BATCH_SIZE = 256
 # below is typical retail
 # INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     input_size += 20 if INDICATORS[3] else 0  # 20 additional parameters for fvg
 
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE, input_size=input_size)
-    if os.path.exists('./results'):
+    if not os.path.exists('./results'):
         os.mkdir('./results')
     for epoch in range(EPOCHES):
         env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', BATCH_SIZE, indicator_select=INDICATORS)
