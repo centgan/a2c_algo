@@ -1,8 +1,7 @@
 import os
 import tensorflow.keras as keras
-from tensorflow.keras.layers import Dense, LSTM, LeakyReLU
+from tensorflow.keras.layers import Dense, LSTM, LeakyReLU, BatchNormalization
 from tensorflow.keras import Sequential
-
 
 class ActorNetwork(keras.Model):
     def __init__(self, action_size, dims_1=64, dims_2=32, name='actor', chkpt_dir='tmp/actor_critic'):
@@ -39,10 +38,12 @@ class CriticNetwork(keras.Model):
 
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),
+            BatchNormalization(),
             LeakyReLU(negative_slope=0.05),
             LSTM(self.dims_2, return_sequences=False),
+            BatchNormalization(),
             LeakyReLU(negative_slope=0.05),
-            Dense(1, activation='tanh'),
+            Dense(1, activation='linear'),
         ])
 
     def call(self, state):

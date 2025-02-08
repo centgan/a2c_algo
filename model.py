@@ -15,8 +15,8 @@ class Agent:
         self.actor = ActorNetwork(action_size=action_size)
         self.critic = CriticNetwork()
 
-        self.actor.compile(optimizer=Adam(learning_rate=alpha_actor))
-        self.critic.compile(optimizer=Adam(learning_rate=alpha_critic))
+        self.actor.compile(optimizer=Adam(learning_rate=alpha_actor, clipnorm=1.0))
+        self.critic.compile(optimizer=Adam(learning_rate=alpha_critic, clipnorm=1.0))
 
         self.balance = 0
 
@@ -41,23 +41,33 @@ class Agent:
         state_ = tf.convert_to_tensor(state_, dtype=tf.float32)
         reward = tf.convert_to_tensor(reward, dtype=tf.float32)
         with tf.GradientTape(persistent=True) as tape:
-            # state_val, probs = self.actor_critic.call(state)
             state_val = self.critic.call(state)
             probs = self.actor.call(state)
             state_val_ = self.critic.call(state_)
-            # state_val_, _ = self.actor_critic.call(state_)
+
             state_val = tf.squeeze(state_val)
             state_val_ = tf.squeeze(state_val_)
-            # print(state_val)
-            # print(state_val[0])
-            action_probs = tfp.distributions.Categorical(probs=probs)
-            log_prob = action_probs.log_prob(state_val)
+
+            action_probs = tfp.distributions.Categorical(probs=probs + 1e-8)
+            action = action_probs.sample()
+            entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
+            log_prob = action_probs.log_prob(action)
+
             # print('log probs: ' + str(log_prob))
 
             delta = reward + self.gamma * (state_val_ - state_val)
-            actor_loss = -log_prob * delta
+            delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
+
+            actor_loss = -log_prob * delta - 0.01 * entropy
             critic_loss = delta ** 2
             # total_loss = actor_loss + critic_loss
+
+        # gradients = tape.gradient(actor_loss, self.actor.trainable_variables)
+        # max_grad = max([tf.reduce_max(tf.abs(g)).numpy() for g in gradients if g is not None])
+        # print(f"Max Gradient: {max_grad}")
+        #
+        # min_grad = min([tf.reduce_min(tf.abs(g)).numpy() for g in gradients if g is not None])
+        # print(f"Min Gradient: {min_grad}")
 
         gradient_actor = tape.gradient(actor_loss, self.actor.trainable_variables)
         self.actor.optimizer.apply_gradients(zip(

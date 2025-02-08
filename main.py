@@ -11,8 +11,8 @@ import os
 from tqdm import tqdm
 import json
 
-ALPHA_ACTOR = 0.00001
-ALPHA_CRITIC = 0.00001
+ALPHA_ACTOR = 0.0005
+ALPHA_CRITIC = 0.0007
 GAMMA = 0.7
 ACTION_SIZE = 3
 LOAD_CHECK = False
