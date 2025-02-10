@@ -32,9 +32,10 @@ class Agent:
         action_probs = tfp.distributions.Categorical(probs=probs)
         action = action_probs.sample()
 
-        self.action = action
+        flipped_action = 2 - action
+        self.action = flipped_action
 
-        return action.numpy()
+        return self.action.numpy()
 
     def learn(self, state,  reward, state_):
         state = tf.convert_to_tensor(state, dtype=tf.float32)
@@ -58,7 +59,7 @@ class Agent:
             delta = reward + self.gamma * (state_val_ - state_val)
             delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
-            actor_loss = -log_prob * delta - 0.01 * entropy
+            actor_loss = -log_prob * delta - 0.05 * entropy
             critic_loss = delta ** 2
             # total_loss = actor_loss + critic_loss
 

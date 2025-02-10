@@ -36,7 +36,7 @@ class EnviroBatchProcess:
 
         self.orders = {"open": [], "closed": []}
         self.year_time_step = 60  # keeps track of which index in the year currently on
-        self.balance = 0
+        self.balance = 10000
         self.done = False
         self.commission = 0.5
 
@@ -215,6 +215,7 @@ class EnviroBatchProcess:
                         'order': action
                     })
                     self.balance -= self.commission  # commission for now is 1
+                    
                     returning_reward.append(self.balance)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
@@ -234,10 +235,18 @@ class EnviroBatchProcess:
                         # self.balance -= self.commission
                         returning_reward.append(self.balance)
             else:
-                returning_reward.append(self.balance)
+                returning_reward.append(self.balance+0.1)
 
             # self.balance = sum(returning_reward)
+        if len(returns) > 1:
+            mean_return = np.mean(returns)
+            std_return = np.std(returns) + 1e-8  # Avoid division by zero
+            sharpe_ratio = mean_return / std_return
+        else:
+            sharpe_ratio = 0  # Not enough trades
 
+        # **Apply Sharpe Ratio to Reward**
+        returning_reward = np.array(returning_reward) + 0.1 * sharpe_ratio
         # print(returning_reward)
         # updating state space to get next batch ie [:256] => [256:512]
         self.year_time_step += self.batch_size
