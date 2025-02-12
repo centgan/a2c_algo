@@ -229,7 +229,15 @@ class EnviroBatchProcess:
                              reward_multiplier[self.instrument]))
                     returning_reward.append(reward)
 
-            # self.balance = sum(returning_reward)
+            # just hard coded for now 100 which is 2% or 50 handles (max draw down)
+            if returning_reward[-1] > 100:
+                self.balance += returning_reward[-1] - self.commission
+                returning_reward[-1] = 0
+
+            # max time limit, trades held at 6pm est will be auto liquidated
+            if datetime.fromtimestamp(int(year_data[self.year_time_step+action_index][-1])).hour == 18:
+                self.balance += returning_reward[-1] - self.commission
+                returning_reward[-1] = 0
 
         # print(returning_reward)
         # updating state space to get next batch ie [:256] => [256:512]
