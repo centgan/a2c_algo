@@ -192,7 +192,7 @@ class EnviroBatchProcess:
                         'order': action
                     })
                     self.balance -= self.commission  # commission for now is 1
-                    returning_reward.append(self.balance)
+                    returning_reward.append(self.commission * -1)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
                         move_to_close = self.orders['open'].pop()
@@ -206,12 +206,28 @@ class EnviroBatchProcess:
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
                                  reward_multiplier[self.instrument]) - self.commission)
                         self.balance += reward
-                        returning_reward.append(self.balance)
+                        returning_reward.append(0)
                     else:
+                        current_close_price = year_data[self.year_time_step+action_index][-2]
+                        opening_price = self.orders['open'][0]['entry_price']
+                        reward = ((opening_price - current_close_price) *
+                                  reward_multiplier[self.instrument]) if action == 'sell' else (
+                                ((current_close_price - opening_price) *
+                                 reward_multiplier[self.instrument]))
                         # self.balance -= self.commission
-                        returning_reward.append(self.balance)
+                        returning_reward.append(reward)
             else:
-                returning_reward.append(self.balance)
+                if len(self.orders['open']) == 0:
+                    returning_reward.append(0)
+                else:
+                    current_close_price = year_data[self.year_time_step + action_index][-2]
+                    opening_price = self.orders['open'][0]['entry_price']
+                    previous_action = self.orders['open'][0]['order']
+                    reward = ((opening_price - current_close_price) *
+                              reward_multiplier[self.instrument]) if previous_action == 'sell' else (
+                            ((current_close_price - opening_price) *
+                             reward_multiplier[self.instrument]))
+                    returning_reward.append(reward)
 
             # self.balance = sum(returning_reward)
 
