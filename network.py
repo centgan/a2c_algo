@@ -38,10 +38,10 @@ class CriticNetwork(keras.Model):
 
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),
-            BatchNormalization(),
+            # BatchNormalization(),
             LeakyReLU(negative_slope=0.05),
             LSTM(self.dims_2, return_sequences=False),
-            BatchNormalization(),
+            # BatchNormalization(),
             LeakyReLU(negative_slope=0.05),
             Dense(1, activation='linear'),
         ])

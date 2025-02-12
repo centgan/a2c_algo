@@ -217,7 +217,7 @@ class EnviroBatchProcess:
                         'order': action
                     })
                     self.balance -= self.commission  # commission for now is 1
-                    returning_reward.append(self.commission * -1)
+                    returning_reward.append(0)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
                         move_to_close = self.orders['open'].pop()
@@ -256,11 +256,19 @@ class EnviroBatchProcess:
 
             # just hard coded for now 100 which is 2% or 50 handles (max draw down)
             if returning_reward[-1] > 100:
+                move_to_close = self.orders['open'].pop()
+                move_to_close['exit_datetime'] = year_data[self.year_time_step + action_index][-1]
+                move_to_close['exit_price'] = year_data[self.year_time_step + action_index][-2]
+                self.orders['closed'].append(move_to_close)
                 self.balance += returning_reward[-1] - self.commission
                 returning_reward[-1] = 0
 
             # max time limit, trades held at 6pm est will be auto liquidated
             if datetime.fromtimestamp(int(year_data[self.year_time_step + action_index][-1])).hour == 18:
+                move_to_close = self.orders['open'].pop()
+                move_to_close['exit_datetime'] = year_data[self.year_time_step + action_index][-1]
+                move_to_close['exit_price'] = year_data[self.year_time_step + action_index][-2]
+                self.orders['closed'].append(move_to_close)
                 self.balance += returning_reward[-1] - self.commission
                 returning_reward[-1] = 0
 

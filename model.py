@@ -50,16 +50,16 @@ class Agent:
             state_val_ = tf.squeeze(state_val_)
 
             action_probs = tfp.distributions.Categorical(probs=probs + 1e-8)
-            action = action_probs.sample()
-            entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
-            log_prob = action_probs.log_prob(action)
+            # action = action_probs.sample()
+            # entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
+            log_prob = action_probs.log_prob(state_val)
 
             # print('log probs: ' + str(log_prob))
 
             delta = reward + self.gamma * (state_val_ - state_val)
-            delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
+            # delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
-            actor_loss = -log_prob * delta - 0.05 * entropy
+            actor_loss = -log_prob * delta #- 0.05 * entropy
             critic_loss = delta ** 2
             # total_loss = actor_loss + critic_loss
 

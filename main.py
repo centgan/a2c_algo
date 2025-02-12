@@ -19,12 +19,28 @@ ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
 EPOCHES = 2
+BATCH_SIZES = [1, 4, 16, 32, 128, 256]
 BATCH_SIZE = 256
 LAMBDA = 0.8
 # below is typical retail
-# INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
+INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # below is ict
-INDICATORS = [0, 0, 1, 1, 1]
+# INDICATORS = [0, 0, 1, 1, 1]
+
+def determine_batch_size(percentage):
+    if percentage < 0.4:
+        return BATCH_SIZES[0]
+    elif percentage < 5:
+        return BATCH_SIZES[1]
+    elif percentage < 10:
+        return BATCH_SIZES[2]
+    elif percentage < 30:
+        return BATCH_SIZES[3]
+    elif percentage < 60:
+        return BATCH_SIZES[4]
+    else:
+        return BATCH_SIZES[5]
+
 
 if __name__ == '__main__':
     start_training = '2011-01-03'
@@ -38,9 +54,8 @@ if __name__ == '__main__':
         os.mkdir('./results')
 
     for epoch in range(EPOCHES):
-        env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', BATCH_SIZE, indicator_select=INDICATORS)
+        env = EnviroBatchProcess(INSTRUMENT, '2011-01-03', '2020-02-03', BATCH_SIZES[0], indicator_select=INDICATORS)
 
-        observation = env.env_out
         balance_history = []
         pre_balance = 0
         highest_balance = 0
@@ -48,15 +63,19 @@ if __name__ == '__main__':
 
         with tqdm(total=env.year_data_shape[0], desc=f'Epoch {epoch + 1}/{EPOCHES}', ncols=100) as pbar:
             while not env.done:
+                env.batch_size = determine_batch_size((env.year_time_step / env.year_data_shape[0]) * 100)
+                # print(env.batch_size)
+                observation = env.env_out
                 pbar.set_postfix({"Reward": f"{env.balance:.2f}"})
                 actions = agent.choose_action(observation)
                 # print(actions)
-                observation_, reward_unreal, reward_real = env.step(action_mapping[action] for action in actions)
-                reward_real = np.multiply(LAMBDA, reward_real)
-                reward_unreal = np.multiply((1 - LAMBDA), reward_unreal)
-                training_reward = np.add(reward_real, reward_unreal).tolist()
-                # print(training_reward)
-                # print(len(training_reward))
+                actions_mapped = [action_mapping[action] for action in actions]
+                observation_, reward_unreal, reward_real = env.step(actions_mapped)
+                print(reward_unreal, reward_real, actions)
+                reward_real_lambda = np.multiply(LAMBDA, reward_real)
+                reward_unreal_lambda = np.multiply((1 - LAMBDA), reward_unreal)
+                training_reward = np.add(reward_real_lambda, reward_unreal_lambda).tolist()
+
                 if observation_.size == 0:
                     continue
 
@@ -66,13 +85,13 @@ if __name__ == '__main__':
                 observation = observation_
                 balance_history.append(env.balance)
                 # print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
-                print(round(env.balance, 2), reward_unreal, actions)
+                # print(reward_unreal, reward_real, actions)
                 pre_balance = env.balance
                 if env.balance > highest_balance and not LOAD_CHECK:
                     highest_balance = env.balance
                     agent.save_model()
 
-                pbar.update(BATCH_SIZE)
+                pbar.update(env.batch_size)
 
             with open(f'./results/{datetime.now().strftime("%Y-%m-%d_%H:%M")}_{epoch}.json', 'w') as f:
                 json.dump(balance_history, f)
