@@ -36,7 +36,7 @@ class EnviroBatchProcess:
 
         self.orders = {"open": [], "closed": []}
         self.year_time_step = 60  # keeps track of which index in the year currently on
-        self.balance = 10000
+        self.balance = 0
         self.done = False
         self.commission = 0.5
 
@@ -203,7 +203,9 @@ class EnviroBatchProcess:
         }
 
         returning_reward = []
+        returning_realized = []
         # calculating the realized reward
+        # print(actions)
         for action_index, action in enumerate(actions):
             if action != 'hold':
                 if len(self.orders['open']) == 0:
@@ -215,8 +217,7 @@ class EnviroBatchProcess:
                         'order': action
                     })
                     self.balance -= self.commission  # commission for now is 1
-                    
-                    returning_reward.append(self.balance)
+                    returning_reward.append(self.commission * -1)
                 else:
                     if (action == 'buy' and self.orders['open'][0]['order'] == 'sell') or (action == 'sell' and self.orders['open'][0]['order'] == 'buy'):
                         move_to_close = self.orders['open'].pop()
@@ -230,29 +231,47 @@ class EnviroBatchProcess:
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
                                  reward_multiplier[self.instrument]) - self.commission)
                         self.balance += reward
-                        returning_reward.append(self.balance)
+                        returning_reward.append(0)
                     else:
+                        current_close_price = year_data[self.year_time_step + action_index][-2]
+                        opening_price = self.orders['open'][0]['entry_price']
+                        reward = ((opening_price - current_close_price) *
+                                  reward_multiplier[self.instrument]) if action == 'sell' else (
+                            ((current_close_price - opening_price) *
+                             reward_multiplier[self.instrument]))
                         # self.balance -= self.commission
-                        returning_reward.append(self.balance)
+                        returning_reward.append(reward)
             else:
-                returning_reward.append(self.balance+0.1)
+                if len(self.orders['open']) == 0:
+                    returning_reward.append(0)
+                else:
+                    current_close_price = year_data[self.year_time_step + action_index][-2]
+                    opening_price = self.orders['open'][0]['entry_price']
+                    previous_action = self.orders['open'][0]['order']
+                    reward = ((opening_price - current_close_price) *
+                              reward_multiplier[self.instrument]) if previous_action == 'sell' else (
+                        ((current_close_price - opening_price) *
+                         reward_multiplier[self.instrument]))
+                    returning_reward.append(reward)
 
-            # self.balance = sum(returning_reward)
-        if len(returns) > 1:
-            mean_return = np.mean(returns)
-            std_return = np.std(returns) + 1e-8  # Avoid division by zero
-            sharpe_ratio = mean_return / std_return
-        else:
-            sharpe_ratio = 0  # Not enough trades
+            # just hard coded for now 100 which is 2% or 50 handles (max draw down)
+            if returning_reward[-1] > 100:
+                self.balance += returning_reward[-1] - self.commission
+                returning_reward[-1] = 0
 
-        # **Apply Sharpe Ratio to Reward**
-        returning_reward = np.array(returning_reward) + 0.1 * sharpe_ratio
+            # max time limit, trades held at 6pm est will be auto liquidated
+            if datetime.fromtimestamp(int(year_data[self.year_time_step + action_index][-1])).hour == 18:
+                self.balance += returning_reward[-1] - self.commission
+                returning_reward[-1] = 0
+
+            returning_realized.append(self.balance)
+
         # print(returning_reward)
         # updating state space to get next batch ie [:256] => [256:512]
         self.year_time_step += self.batch_size
         self.env_out = self.get_env_state()
 
-        return [self.env_out, returning_reward]
+        return [self.env_out, returning_reward, returning_realized]
 
 
 if __name__ == '__main__':

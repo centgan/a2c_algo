@@ -12,18 +12,19 @@ from tqdm import tqdm
 import json
 import numpy as np
 
-ALPHA_ACTOR = 0.00005
-ALPHA_CRITIC = 0.0001
+ALPHA_ACTOR = 0.0005
+ALPHA_CRITIC = 0.0007
 GAMMA = 0.7
 ACTION_SIZE = 3
 LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
 EPOCHES = 2
 BATCH_SIZE = 256
+LAMBDA = 0.8
 # below is typical retail
-INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
+# INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # below is ict
-# INDICATORS = [0, 0, 1, 1, 1]
+INDICATORS = [0, 0, 1, 1, 1]
 
 if __name__ == '__main__':
     start_training = '2011-01-03'
@@ -50,17 +51,22 @@ if __name__ == '__main__':
                 pbar.set_postfix({"Reward": f"{env.balance:.2f}"})
                 actions = agent.choose_action(observation)
                 # print(actions)
-                observation_, reward_real = env.step(action_mapping[action] for action in actions)
-                reward_real = (reward_real - np.mean(reward_real)) / (np.std(reward_real) + 1e-8)
+                observation_, reward_unreal, reward_real = env.step(action_mapping[action] for action in actions)
+                reward_real = np.multiply(LAMBDA, reward_real)
+                reward_unreal = np.multiply((1 - LAMBDA), reward_unreal)
+                training_reward = np.add(reward_real, reward_unreal).tolist()
+                # print(training_reward)
+                # print(len(training_reward))
                 if observation_.size == 0:
                     continue
 
                 if not LOAD_CHECK:
-                    agent.learn(observation, reward_real, observation_)
+                    agent.learn(observation, training_reward, observation_)
 
                 observation = observation_
                 balance_history.append(env.balance)
                 # print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
+                print(round(env.balance, 2), reward_unreal, actions)
                 pre_balance = env.balance
                 if env.balance > highest_balance and not LOAD_CHECK:
                     highest_balance = env.balance
