@@ -230,7 +230,7 @@ class EnviroBatchProcess:
                     returning_reward.append(reward)
 
             # just hard coded for now 100 which is 2% or 50 handles (max draw down)
-            if returning_reward[-1] > 100:
+            if returning_reward[-1] > 100 and len(self.orders['open']) != 0:
                 move_to_close = self.orders['open'].pop()
                 move_to_close['exit_datetime'] = year_data[self.year_time_step + action_index][-1]
                 move_to_close['exit_price'] = year_data[self.year_time_step + action_index][-2]
@@ -239,7 +239,7 @@ class EnviroBatchProcess:
                 returning_reward[-1] = 0
 
             # max time limit, trades held at 6pm est will be auto liquidated
-            if datetime.fromtimestamp(int(year_data[self.year_time_step+action_index][-1])).hour == 18:
+            if datetime.fromtimestamp(int(year_data[self.year_time_step+action_index][-1])).hour == 18 and datetime.fromtimestamp(int(year_data[self.year_time_step+action_index][-1])).miunte == 0 and len(self.orders['open']) != 0:
                 move_to_close = self.orders['open'].pop()
                 move_to_close['exit_datetime'] = year_data[self.year_time_step + action_index][-1]
                 move_to_close['exit_price'] = year_data[self.year_time_step + action_index][-2]
@@ -251,6 +251,7 @@ class EnviroBatchProcess:
         # updating state space to get next batch ie [:256] => [256:512]
         self.year_time_step += self.batch_size
         self.env_out = self.get_env_state()
+        print(year_data[self.year_time_step][-1])
 
         return [self.env_out, returning_reward]
 
