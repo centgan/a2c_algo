@@ -18,6 +18,7 @@ INSTRUMENT = 'NAS100_USD'
 INDICATOR = [1, 1, 0, 0, 1]  # same here rsi, mac, ob, fvg, news
 
 if __name__ == '__main__':
+    # This is for testing how the model performs on new data
     start_training = '2020-02-04'
     end_training = '2024-12-31'
 

@@ -202,8 +202,8 @@ class EnviroBatchProcess:
             'NAS100_USD': 2
         }
 
-        returning_reward = []
-        returning_realized = []
+        returning_reward = []  # should be the unrealized profit
+        returning_realized = []  #should be the realized profit
         # calculating the realized reward
         # print(actions)
         for action_index, action in enumerate(actions):
@@ -227,10 +227,10 @@ class EnviroBatchProcess:
                         # this reward below just calculates the difference between entry and exit apply a commission
                         # rate of 1 (for now)
                         reward = ((move_to_close['entry_price'] - move_to_close['exit_price']) *
-                                  reward_multiplier[self.instrument]) - self.commission if action == 'buy' else (
+                                  reward_multiplier[self.instrument]) if action == 'buy' else (
                                 ((move_to_close['exit_price'] - move_to_close['entry_price']) *
-                                 reward_multiplier[self.instrument]) - self.commission)
-                        self.balance += reward
+                                 reward_multiplier[self.instrument]))
+                        self.balance += round(reward - self.commission, 2)
                         returning_reward.append(0)
                     else:
                         current_close_price = year_data[self.year_time_step + action_index][-2]
@@ -240,7 +240,7 @@ class EnviroBatchProcess:
                             ((current_close_price - opening_price) *
                              reward_multiplier[self.instrument]))
                         # self.balance -= self.commission
-                        returning_reward.append(reward)
+                        returning_reward.append(round(reward, 2))
             else:
                 if len(self.orders['open']) == 0:
                     returning_reward.append(0)
@@ -252,10 +252,10 @@ class EnviroBatchProcess:
                               reward_multiplier[self.instrument]) if previous_action == 'sell' else (
                         ((current_close_price - opening_price) *
                          reward_multiplier[self.instrument]))
-                    returning_reward.append(reward)
+                    returning_reward.append(round(reward, 2))
 
             # just hard coded for now 100 which is 2% or 50 handles (max draw down)
-            if returning_reward[-1] > 100 and len(self.orders['open']) != 0:
+            if returning_reward[-1] < -100 and len(self.orders['open']) != 0:
                 move_to_close = self.orders['open'].pop()
                 move_to_close['exit_datetime'] = year_data[self.year_time_step + action_index][-1]
                 move_to_close['exit_price'] = year_data[self.year_time_step + action_index][-2]
