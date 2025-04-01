@@ -54,9 +54,7 @@ class Agent:
             # entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
             log_prob = action_probs.log_prob(state_val)
 
-            # print('log probs: ' + str(log_prob))
-
-            delta = reward + self.gamma * (state_val_ - state_val)
+            delta = reward + self.gamma * state_val_ - state_val
             # delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
             actor_loss = -log_prob * delta #- 0.05 * entropy
