@@ -4,14 +4,16 @@ from tensorflow.keras.layers import Dense, LSTM, LeakyReLU, BatchNormalization
 from tensorflow.keras import Sequential
 
 class ActorNetwork(keras.Model):
-    def __init__(self, action_size, dims_1=64, dims_2=32, name='actor', chkpt_dir='tmp/actor_critic'):
+    def __init__(self, action_size, dims_1=64, dims_2=32, name='actor', chkpt_dir='tmp/actor_critic', sync_dir='sync/actor_critic'):
         super(ActorNetwork, self).__init__()
         self.dims_1 = dims_1
         self.dims_2 = dims_2
         self.action_size = action_size
         self.model_name = name
         self.checkpoint_dir = chkpt_dir
+        self.sync_dir = sync_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, self.model_name+'_first.weights.h5')
+        self.sync_checkpoint_dir = os.path.join(self.sync_dir, self.model_name + '.weights.h5')
 
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),
@@ -28,13 +30,15 @@ class ActorNetwork(keras.Model):
 
 
 class CriticNetwork(keras.Model):
-    def __init__(self, dims_1=64, dims_2=32, name='critic', chkpt_dir='tmp/actor_critic'):
+    def __init__(self, dims_1=64, dims_2=32, name='critic', chkpt_dir='tmp/actor_critic', sync_dir='sync/actor_critic'):
         super(CriticNetwork, self).__init__()
         self.dims_1 = dims_1
         self.dims_2 = dims_2
         self.model_name = name
         self.checkpoint_dir = chkpt_dir
+        self.sync_dir = sync_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, self.model_name+'_first.weights.h5')
+        self.sync_checkpoint_dir = os.path.join(self.sync_dir, self.model_name+'.weights.h5')
 
         self.NN = Sequential([
             LSTM(self.dims_1, return_sequences=True),

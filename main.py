@@ -29,6 +29,7 @@ LAMBDA = 0.8
 INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # below is ict
 # INDICATORS = [0, 0, 1, 1, 1]
+ACTION_MAPPING = ['sell', 'hold', 'buy']
 
 NUM_AGENTS = 4
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
@@ -50,50 +51,70 @@ def determine_batch_size(percentage):
 
 # agent_id is 0 based
 def agent_worker(agent_id, global_memory_, lock_, queue_):
-    os.makedirs(f'./results/{agent_id}_agent', exist_ok=True)
+    path = f'./results/{agent_id}'
+    os.makedirs(path, exist_ok=True)
 
     date_delta = (END_TRAINING - START_TRAINING).days // NUM_AGENTS
     agent_start = START_TRAINING + timedelta(agent_id * date_delta)
 
     # loop the environment start dates to ensure that start time steps are the same for all workers
-    looping = [[agent_start, END_TRAINING]]
+    time_frame_looping = [[agent_start, END_TRAINING]]
     if agent_start != START_TRAINING:
-        looping.append([START_TRAINING, agent_start])
+        time_frame_looping.append([START_TRAINING, agent_start])
 
-    steps = 0
-    while steps < 1_000_000:
-        steps += 3 * (agent_id + 1)
-        queue_.put((agent_id, steps))
-    # for loop in looping:
-    #     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-    #     env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
-    #     while not env.done:
+    last_weight_updated = 0.0
+    # steps = 0
+    # while steps < 1_000_000:
+    #     steps += 3 * (agent_id + 1)
+    #     queue_.put((agent_id, steps))
+    for loop in time_frame_looping:
+        agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
+        env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
+        while not env.done:
+            observation = env.env_out
+            actions = agent.choose_action(observation)
+            actions_mapped = [ACTION_MAPPING[action] for action in actions]
+            observation_, reward_unreal, reward_real = env.step(actions_mapped)
+            print(agent_id, reward_unreal, reward_real)
+
+            # print(len(global_memory_))
+            with lock_:
+                balanced_reward = (0.3 * np.array(reward_unreal)) + (0.7 * np.array(reward_real))
+                global_memory_.append((observation, actions, balanced_reward, observation_))
+
+            # only need to check 1 of the 2 filepaths because they should always be updating together
+            thing = agent.critic.sync_dir + '/critic.npy'
+            if os.path.isfile(thing):
+                if os.path.getmtime(thing) != last_weight_updated:
+                    agent.load_sync_model()
+                    last_weight_updated = os.path.getmtime(thing)
+                    # print('loaded')
+
+            queue_.put((agent_id, env.batch_size, env.balance))
 
 def learner(global_memory_, lock_):
+    # this is the global agent the one that receives all the training a
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
 
     while True:
-        if len(global_memory_) >= 32:  # Wait until we have enough experiences
+        # print(len(global_memory_), len(global_memory_) >= 64)
+        if len(global_memory_) >= 64:  # Wait until we have enough experiences
+            print('mem is full')
             with lock_:
-                batch = global_memory_[:32]
-                del global_memory_[:32]  # Remove used experiences
-
-            # Convert batch to tensors
-            states, actions, rewards, next_states = zip(*batch)
-            states = np.array(states)
-            actions = np.array(actions)
-            rewards = np.array(rewards)
-            next_states = np.array(next_states)
+                batch = global_memory_[:64]
+                del global_memory_[:64]  # Remove used experiences
 
             # Perform batch update
-            agent.learn(states, rewards, next_states)
+            agent.batch_learn(batch)
+            agent.save_sync_model()
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('spawn')
     manager = multiprocessing.Manager()
     queue = multiprocessing.Queue()
     global_memory = manager.list()
     lock = manager.Lock()
-    progress_bars = [tqdm(total=1_000_000, desc=f"Process {i}", position=i, ncols=100, dynamic_ncols=True) for i in range(NUM_AGENTS)]
+    progress_bars = [tqdm(total=4777984, desc=f"Process {i}", position=i, ncols=100, dynamic_ncols=True) for i in range(NUM_AGENTS)]
 
     processes = []
     for i in range(NUM_AGENTS):
@@ -107,15 +128,16 @@ if __name__ == '__main__':
     completed = [0] * NUM_AGENTS
     while any(p.is_alive() for p in processes):
         try:
-            process_id, progress = queue.get(timeout=0.1)
+            process_id, progress, reward = queue.get(timeout=0.1)
             if completed[process_id] < progress:
                 progress_bars[process_id].update(progress - completed[process_id])
+                progress_bars[process_id].set_postfix({"Reward": f"{reward:.2f}"})
                 completed[process_id] = progress
         except _queue.Empty:
             pass
 
-    for i in progress_bars:
-        i.close()
+    # for i in progress_bars:
+    #     i.close()
     for p in processes:
         p.join()
 
@@ -129,7 +151,6 @@ if __name__ == '__main__':
     #     balance_history = []
     #     pre_balance = 0
     #     highest_balance = 0
-    #     action_mapping = ['sell', 'hold', 'buy']
     #
     #     with tqdm(total=env.year_data_shape[0], desc=f'Epoch {epoch + 1}/{EPOCHES}', ncols=100) as pbar:
     #         while not env.done:
@@ -139,7 +160,7 @@ if __name__ == '__main__':
     #             pbar.set_postfix({"Reward": f"{env.balance:.2f}"})
     #             actions = agent.choose_action(observation)
     #             # print(actions)
-    #             actions_mapped = [action_mapping[action] for action in actions]
+    #             actions_mapped = [ACTION_MAPPING[action] for action in actions]
     #             observation_, reward_unreal, reward_real = env.step(actions_mapped)
     #             print(reward_unreal, reward_real, actions)
     #             reward_real_lambda = np.multiply(LAMBDA, reward_real)

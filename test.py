@@ -27,7 +27,8 @@ def worker(process_id, total_iterations, queue):
     # Simulate work by updating progress
     for i in range(total_iterations):
         time.sleep(0.001)  # Simulating work
-        queue.put((process_id, i + 1))  # Send progress to main process
+        reward = 100 - (i*0.1)
+        queue.put((process_id, i + 1, reward))  # Send progress to main process
 
 def main():
     queue = multiprocessing.Queue()
@@ -45,9 +46,10 @@ def main():
     completed = [0, 0]
     while any(p.is_alive() for p in processes):
         try:
-            process_id, progress = queue.get(timeout=0.1)  # Receive progress update
+            process_id, progress, reward = queue.get(timeout=0.1)  # Receive progress update
             if completed[process_id] < progress:
                 progress_bars[process_id].update(progress - completed[process_id])
+                progress_bars[process_id].set_postfix({"Reward": f"{reward:.2f}"})
                 completed[process_id] = progress
         except _queue.Empty:
             pass
