@@ -100,10 +100,10 @@ class Agent:
         with tf.GradientTape(persistent=True) as tape:
             # need to squeeze because lstm only accepts ndim=3 but because of how its set up it is currently a ndim=4 so
             # need to squeeze it
-            print(state.shape)
+            # print(state.shape)
             state = tf.squeeze(state)
             state_ = tf.squeeze(state_)
-            print(state.shape)
+            # print(state.shape)
 
             state_val = self.critic.call(state)
             probs = self.actor.call(state)

@@ -99,7 +99,7 @@ def learner(global_memory_, lock_):
     while True:
         # print(len(global_memory_), len(global_memory_) >= 64)
         if len(global_memory_) >= 64:  # Wait until we have enough experiences
-            print('mem is full')
+            # print('mem is full')
             with lock_:
                 batch = global_memory_[:64]
                 del global_memory_[:64]  # Remove used experiences
