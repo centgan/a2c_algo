@@ -29,6 +29,167 @@ def calculate_ema(prices, period):
 # news where 0 is nothing, 1 is low impact, 2 is medium impact, 3 is high impact and the highest always takes precedence
 # ignore all day news?
 
+class BatchJITIndicator:
+    def __init__(self, chunk_data, indicator_flags, testing=False):
+        self.chunk_data = chunk_data  # should be a numpy array
+        self.rsi_flag = indicator_flags[0]
+        self.mac_flag = indicator_flags[1]
+        self.ob_flag = indicator_flags[2]
+        self.fvg_flag = indicator_flags[3]
+        self.news_flag = indicator_flags[4]
+        self.testing = testing
+
+        self.indicator_out = {}
+
+        self.eco_news = pd.read_csv('eco_news.csv')
+        self.eco_news['Time'] = pd.to_datetime(self.eco_news['Time'], format='%I:%M%p')
+        self.eco_news['Time'] = self.eco_news['Time'].dt.strftime('%H:%M:%S')
+        self.eco_news['Datetime'] = pd.to_datetime(self.eco_news['Date'] + ' ' + self.eco_news['Time'])
+
+        self.process(self.chunk_data)
+
+    def process(self, chunk_data):
+        self.chunk_data = chunk_data
+        if self.rsi_flag:
+            period = 14
+            closes = np.array([data[3] for data in self.chunk_data])
+            price_changes = np.diff(closes)
+            gains = np.where(price_changes > 0, price_changes, 0)
+            losses = np.where(price_changes < 0, -price_changes, 0)
+
+            avg_gain = np.zeros_like(closes)
+            avg_loss = np.zeros_like(closes)
+
+            avg_gain[period] = np.mean(gains[:period])
+            avg_loss[period] = np.mean(losses[:period])
+
+            for i in range(period + 1, len(closes)):
+                avg_gain[i] = (avg_gain[i - 1] * (period - 1) + gains[i - 1]) / period
+                avg_loss[i] = (avg_loss[i - 1] * (period - 1) + losses[i - 1]) / period
+
+            rs = np.zeros_like(closes)
+            rsi = np.zeros_like(closes)
+
+            nonzero_loss_indices = avg_loss != 0
+            rs[nonzero_loss_indices] = avg_gain[nonzero_loss_indices] / avg_loss[nonzero_loss_indices]
+
+            rsi[nonzero_loss_indices] = 100 - (100 / (1 + rs[nonzero_loss_indices]))
+            rsi[~nonzero_loss_indices] = 0
+            if 'rsi' in self.indicator_out.keys():
+                self.indicator_out['rsi'] = np.append(self.indicator_out['rsi'][-60:], rsi[60:])
+            else:
+                self.indicator_out['rsi'] = rsi
+
+        if self.mac_flag:
+            short_period = 12
+            long_period = 26
+            signal_period = 9
+            closes = [data[3] for data in self.chunk_data]
+
+            ema_short = calculate_ema(closes, short_period)
+            ema_long = calculate_ema(closes, long_period)
+            # print(ema_short, ema_long)
+
+            # Calculate the MACD Line (difference between fast and slow EMAs)
+            macd_line = np.zeros_like(closes)
+            macd_line[25:] = np.array(ema_short)[25:] - np.array(ema_long)[25:]
+
+            # Calculate the Signal Line (9-period EMA of the MACD Line)
+            signal_line = np.zeros_like(closes)
+            signal_line[25:] = calculate_ema(macd_line[25:], signal_period)
+            # signal_line[34:] = calculate_ema(macd_line[25:], signal_period)
+
+            if 'macd' in self.indicator_out.keys():
+                self.indicator_out['macd'] = np.append(self.indicator_out['macd'][-60:], macd_line[60:])
+            else:
+                self.indicator_out['macd'] = macd_line
+
+        if self.ob_flag:
+            overall_ob = []
+            ob_up_values = [0, 0, 0, 0, 0]  # end result shape should be (length of data, 10)
+            ob_down_values = [0, 0, 0, 0, 0]
+            overall_ob.append(ob_up_values + ob_down_values)
+            for i in range(1, len(self.chunk_data) - 1):
+                if self.chunk_data[i][2] < self.chunk_data[i + 1][2] and self.chunk_data[i][2] < self.chunk_data[i - 1][2]:
+                    # checks first for the middle if it is down close this is the one that we will want to take and is the
+                    # best case
+                    if self.chunk_data[i][0] > self.chunk_data[i][3]:
+                        ob_up_values.pop(0)
+                        ob_up_values.append(self.chunk_data[i][0])
+                    # checks if first candle is down close candle
+                    elif self.chunk_data[i - 1][0] > self.chunk_data[i - 1][3]:
+                        ob_up_values.pop(0)
+                        ob_up_values.append(self.chunk_data[i - 1][0])
+                    # checks if 3rd candle is down close candle
+                    elif self.chunk_data[i + 1][0] > self.chunk_data[i + 1][3]:
+                        ob_up_values.pop(0)
+                        ob_up_values.append(self.chunk_data[i + 1][0])
+                # for bearish the order block will be an up close candle OHLC
+                if self.chunk_data[i][1] > self.chunk_data[i - 1][1] and self.chunk_data[i][1] > self.chunk_data[i + 1][1]:
+                    # checks first for the middle it is an up close candle this is the best case and the one we will take
+                    if self.chunk_data[i][0] < self.chunk_data[i][3]:
+                        ob_down_values.pop(0)
+                        ob_down_values.append(self.chunk_data[i][0])
+                    elif self.chunk_data[i - 1][0] < self.chunk_data[i - 1][3]:
+                        ob_down_values.pop(0)
+                        ob_down_values.append(self.chunk_data[i - 1][0])
+                    elif self.chunk_data[i + 1][0] < self.chunk_data[i + 1][3]:
+                        ob_down_values.pop(0)
+                        ob_down_values.append(self.chunk_data[i + 1][0])
+                overall_ob.append(ob_up_values + ob_down_values)
+            overall_ob.append(ob_up_values + ob_down_values)
+
+            if 'ob' in self.indicator_out.keys():
+                print(self.indicator_out['ob'])
+                self.indicator_out['ob'] = self.indicator_out['ob'][-60:] + overall_ob[-60:]
+            else:
+                print(overall_ob[-60:])
+                self.indicator_out['ob'] = overall_ob[-60:]
+
+        if self.fvg_flag:
+            overall_fvgs = []
+            fvgs_up_values_hold = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            fvgs_down_values_hold = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # this ends up being of shape (len, 20)
+            for i in range(2, len(self.chunk_data)):
+                high = self.chunk_data[i - 2, 1]  # High of current
+                low = self.chunk_data[i - 2, 2]  # Low of current
+                high_next = self.chunk_data[i, 1]  # High of future
+                low_next = self.chunk_data[i, 2]  # Low of future
+                if low < high_next:
+                    fvgs_up_values_hold = fvgs_up_values_hold[2:]
+                    fvgs_up_values_hold.extend([low, high_next])
+                elif high > low_next:
+                    fvgs_down_values_hold = fvgs_down_values_hold[2:]
+                    fvgs_down_values_hold.extend([high, low_next])
+
+                overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
+            # append it 2 more times so that the last 2 candles also have access to the fvgs
+            overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
+            overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
+
+            if 'fvg' in self.indicator_out.keys():
+                self.indicator_out['fvg'] = self.indicator_out['fvg'][-60:] + overall_fvgs[-60:]
+            else:
+                self.indicator_out['fvg'] = overall_fvgs[-60:]
+
+        if self.news_flag:
+            news_values = []
+            eco_news_max_impact = self.eco_news.groupby('Datetime')['Impact'].max()
+            eco_news_dict = eco_news_max_impact.to_dict()
+            for i in self.chunk_data:
+                from_timestamp = datetime.datetime.fromtimestamp(float(i[-1]))
+                current_news = eco_news_dict.get(from_timestamp, None)
+                if current_news is None:
+                    news_values.append(0)
+                else:
+                    news_values.append(current_news)
+
+            if 'news' in self.indicator_out.keys():
+                self.indicator_out['news'] = self.indicator_out['news'][-60:] + news_values[60:]
+            else:
+                self.indicator_out['news'] = news_values[60:]
+
+
 
 class BatchIndicators:
     def __init__(self, year_data_filename, year_data_shape, indicator_flag, testing=False):

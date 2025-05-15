@@ -72,7 +72,11 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
         while not env.done:
             observation = env.env_out
+            # if agent_id == 2:
+            #     print(observation)
+            #     print(observation.shape)
             actions = agent.choose_action(observation)
+            # print(actions)
             actions_mapped = [ACTION_MAPPING[action] for action in actions]
             observation_, reward_unreal, reward_real = env.step(actions_mapped)
             print(agent_id, reward_unreal, reward_real)
@@ -86,7 +90,8 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
             thing = agent.critic.sync_dir + '/critic.npy'
             if os.path.isfile(thing):
                 if os.path.getmtime(thing) != last_weight_updated:
-                    agent.load_sync_model()
+                    print('learned')
+                    agent.load_sync_model(INDICATORS)
                     last_weight_updated = os.path.getmtime(thing)
                     # print('loaded')
 

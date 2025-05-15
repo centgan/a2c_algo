@@ -146,7 +146,8 @@ class Agent:
         # self.actor.save_weights(self.actor.sync_checkpoint_dir)
         # self.critic.save_weights(self.critic.sync_checkpoint_dir)
 
-    def load_sync_model(self):
+    def load_sync_model(self, indicators):
+        ind_count = sum(indicators)
         # if not self.actor.built:
         #     self.actor.build((None, 60, 8))
         # if not self.critic.built:
@@ -156,7 +157,7 @@ class Agent:
         actor_weights = np.load(self.actor.sync_dir + "/actor.npy", allow_pickle=True)
         self.actor.set_weights(actor_weights.tolist())
 
-        dummy_input = tf.zeros((1, 60, 8))
+        dummy_input = tf.zeros((1, 60, 5+ind_count))
         self.critic.call(dummy_input)
         # Load critic
         critic_weights = np.load(self.critic.sync_dir + "/critic.npy", allow_pickle=True)
