@@ -92,6 +92,7 @@ class EnviroBatchProcess:
                 _, self.chunk_data = next(self.chunk_gen)
                 self.chunk_data = np.append(self.chunk_data, copied_chuck_end)
                 self.chunk_time_step = 60
+                self.indicator_class.process(self.chunk_data)
 
             except StopIteration:
                 self.current_year += 1
@@ -104,8 +105,9 @@ class EnviroBatchProcess:
                     _, self.chunk_data = next(self.chunk_gen)
                     self.chunk_data = np.append(self.chunk_data, copied_chuck_end)
                     self.chunk_time_step = 60
+                    self.indicator_class.process(self.chunk_data)
 
-        self.indicator_class.process(self.chunk_data)
+
         end_index = self.chunk_time_step + self.batch_size
 
         indicator_names = ['rsi', 'macd', 'ob', 'fvg', 'news']

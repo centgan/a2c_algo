@@ -70,6 +70,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
     for loop in time_frame_looping:
         agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
         env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
+        print('starting loop: ', loop)
         while not env.done:
             observation = env.env_out
             # if agent_id == 2:
