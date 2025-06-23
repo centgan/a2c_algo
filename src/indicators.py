@@ -41,15 +41,16 @@ class BatchJITIndicator:
 
         self.indicator_out = {}
 
-        self.eco_news = pd.read_csv('eco_news.csv')
+        self.eco_news = pd.read_csv('./eco_news.csv')
         self.eco_news['Time'] = pd.to_datetime(self.eco_news['Time'], format='%I:%M%p')
         self.eco_news['Time'] = self.eco_news['Time'].dt.strftime('%H:%M:%S')
         self.eco_news['Datetime'] = pd.to_datetime(self.eco_news['Date'] + ' ' + self.eco_news['Time'])
 
-        self.process(self.chunk_data)
+        self.process(self.chunk_data, 0)
 
-    def process(self, chunk_data):
+    def process(self, chunk_data, remainder):
         self.chunk_data = chunk_data
+        start_index = -60 - remainder
         if self.rsi_flag:
             period = 14
             closes = np.array([data[3] for data in self.chunk_data])
@@ -76,7 +77,7 @@ class BatchJITIndicator:
             rsi[nonzero_loss_indices] = 100 - (100 / (1 + rs[nonzero_loss_indices]))
             rsi[~nonzero_loss_indices] = 0
             if 'rsi' in self.indicator_out.keys():
-                self.indicator_out['rsi'] = np.append(self.indicator_out['rsi'][-60:], rsi[60:])
+                self.indicator_out['rsi'] = np.concatenate((self.indicator_out['rsi'][start_index:], rsi[60:]), axis=0)
             else:
                 self.indicator_out['rsi'] = rsi
 
@@ -100,7 +101,7 @@ class BatchJITIndicator:
             # signal_line[34:] = calculate_ema(macd_line[25:], signal_period)
 
             if 'macd' in self.indicator_out.keys():
-                self.indicator_out['macd'] = np.append(self.indicator_out['macd'][-60:], macd_line[60:])
+                self.indicator_out['macd'] = np.concatenate((self.indicator_out['macd'][start_index:], macd_line[60:]), axis=0)
             else:
                 self.indicator_out['macd'] = macd_line
 
@@ -141,7 +142,7 @@ class BatchJITIndicator:
 
             if 'ob' in self.indicator_out.keys():
                 print(self.indicator_out['ob'])
-                self.indicator_out['ob'] = self.indicator_out['ob'][-60:] + overall_ob[-60:]
+                self.indicator_out['ob'] = self.indicator_out['ob'][start_index:] + overall_ob[-60:]
             else:
                 print(overall_ob[-60:])
                 self.indicator_out['ob'] = overall_ob[-60:]
@@ -168,7 +169,7 @@ class BatchJITIndicator:
             overall_fvgs.append(fvgs_up_values_hold + fvgs_down_values_hold)
 
             if 'fvg' in self.indicator_out.keys():
-                self.indicator_out['fvg'] = self.indicator_out['fvg'][-60:] + overall_fvgs[-60:]
+                self.indicator_out['fvg'] = self.indicator_out['fvg'][start_index:] + overall_fvgs[-60:]
             else:
                 self.indicator_out['fvg'] = overall_fvgs[-60:]
 
@@ -185,7 +186,7 @@ class BatchJITIndicator:
                     news_values.append(current_news)
 
             if 'news' in self.indicator_out.keys():
-                self.indicator_out['news'] = self.indicator_out['news'][-60:] + news_values[60:]
+                self.indicator_out['news'] = self.indicator_out['news'][start_index:] + news_values[60:]
             else:
                 self.indicator_out['news'] = news_values[60:]
 
@@ -209,7 +210,7 @@ class BatchIndicators:
 
         self.rsi_need = []
         self.mac_need = []
-        self.eco_news = pd.read_csv('eco_news.csv')
+        self.eco_news = pd.read_csv('../eco_news.csv')
         self.eco_news['Time'] = pd.to_datetime(self.eco_news['Time'], format='%I:%M%p')
         self.eco_news['Time'] = self.eco_news['Time'].dt.strftime('%H:%M:%S')
         self.eco_news['Datetime'] = pd.to_datetime(self.eco_news['Date'] + ' ' + self.eco_news['Time'])
@@ -437,7 +438,7 @@ if __name__ == '__main__':
                  [19650.25, 19651.75, 19646.75, 19650],
                  [19651.25, 19651.5, 19648.25, 19648.25],
                  [19649, 19651.5, 19644.25, 19646.75]]
-    a = BatchIndicators('year_data.dat', (4777984, 5), ob_flag=True)
+    a = BatchIndicators('../year_data.dat', (4777984, 5), ob_flag=True)
     # print(a.state_space)
     # next = [2227.9, 2227.9, 2227.9, 2227.9, '2011-01-13 01:00:00']
     # ends = []

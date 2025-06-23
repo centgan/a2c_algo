@@ -1,13 +1,7 @@
-import os
-
-import requests
 import pandas as pd
-import time
 from datetime import datetime, timedelta
-import json
-import logging
 import pytz
-import indicators
+import src.indicators as indicators
 import numpy as np
 import pyarrow.parquet as pq
 
@@ -43,11 +37,11 @@ class EnviroBatchProcess:
         self.done = False
         self.commission = 0.5
 
-        self.year_data_filename = 'train_year_data.dat' if not testing else 'test_year_data.dat'
+        # self.year_data_filename = 'train_year_data.dat' if not testing else 'test_year_data.dat'
         self.chunk_gen = self.fetch_chunk_data()
         _, self.chunk_data = next(self.chunk_gen)
         self.chunk_indicator = None
-        self.year_data_shape = self.chunk_data.shape
+        self.batch_data_shape = self.chunk_data.shape
         self.indicator_class = indicators.BatchJITIndicator(self.chunk_data, indicator_select, testing=testing)
         self.env_out = self.get_env_state()
 
@@ -86,13 +80,17 @@ class EnviroBatchProcess:
 
     def get_env_state(self):
         returning_batch = []
-        if self.chunk_time_step + self.batch_size > self.year_data_shape[0]:
-            copied_chuck_end = self.chunk_data[-60:]
+        if self.chunk_time_step + self.batch_size > self.batch_data_shape[0]:
+            remainder = self.batch_size - self.chunk_time_step
+            copied_chuck_end = self.chunk_data[-60-remainder:].copy()
             try:
+                # print('in')
                 _, self.chunk_data = next(self.chunk_gen)
-                self.chunk_data = np.append(self.chunk_data, copied_chuck_end)
+                self.chunk_data = np.concatenate((copied_chuck_end, self.chunk_data), axis=0)
+                self.batch_data_shape = self.chunk_data.shape
                 self.chunk_time_step = 60
-                self.indicator_class.process(self.chunk_data)
+                # print(self.chunk_data.shape)
+                self.indicator_class.process(self.chunk_data, remainder)
 
             except StopIteration:
                 self.current_year += 1
@@ -104,18 +102,21 @@ class EnviroBatchProcess:
 
                     _, self.chunk_data = next(self.chunk_gen)
                     self.chunk_data = np.append(self.chunk_data, copied_chuck_end)
+                    self.batch_data_shape = self.chunk_data.shape
                     self.chunk_time_step = 60
-                    self.indicator_class.process(self.chunk_data)
+                    self.indicator_class.process(self.chunk_data, remainder)
 
 
         end_index = self.chunk_time_step + self.batch_size
 
         indicator_names = ['rsi', 'macd', 'ob', 'fvg', 'news']
         for i in range(self.chunk_time_step, end_index):
-            individual_batch = np.array(self.chunk_data[i-60:i])
+            individual_batch = np.array(self.chunk_data[i-60:i].copy())
 
+            # print(individual_batch.shape, i, self.chunk_time_step, end_index, 'individual', self.chunk_data.shape, self.batch_data_shape)
             for indicator_name in indicator_names:
                 if indicator_name in self.indicator_class.indicator_out.keys():
+                    # print(np.array(self.indicator_class.indicator_out[indicator_name][i-60:i]).shape, indicator_name)
                     individual_batch = np.column_stack((individual_batch, self.indicator_class.indicator_out[indicator_name][i-60:i]))
 
             returning_batch.append(individual_batch)

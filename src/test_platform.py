@@ -44,7 +44,7 @@ if __name__ == '__main__':
             continue
 
         observation = observation_
-        print(round(env.balance, 2), round(env.year_time_step / env.year_data_shape[0] * 100, 5))
+        print(round(env.balance, 2), round(env.year_time_step / env.batch_data_shape[0] * 100, 5))
         overall_balance.append(env.balance)
         pre_balance = env.balance
 

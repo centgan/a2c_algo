@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 import tensorflow_probability as tfp
-from network import ActorNetwork, CriticNetwork
+from src.network import ActorNetwork, CriticNetwork
 import logging
 import numpy as np
 
@@ -23,7 +23,7 @@ class Agent:
         self.balance = 0
 
         self.logger = logging.getLogger()
-        logging.basicConfig(filename='log.log', level=logging.INFO,
+        logging.basicConfig(filename='../log.log', level=logging.INFO,
                             format='%(asctime)s  %(levelname)s: %(message)s')
 
         # make the folder for sync weights first and then delete any files that were used in the previous run

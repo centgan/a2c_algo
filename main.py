@@ -3,17 +3,15 @@
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
-from environment import EnviroBatchProcess
-from model import Agent
-import matplotlib.pyplot as plt
+from src.environment import EnviroBatchProcess
+from src.model import Agent
 from datetime import timedelta, datetime
 import os
 from tqdm import tqdm
-import json
 import numpy as np
 import multiprocessing
 import _queue
-import time
+from loguru import logger
 
 ALPHA_ACTOR = 0.0005
 ALPHA_CRITIC = 0.0007
@@ -31,7 +29,7 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 4
+NUM_AGENTS = 1
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
 
@@ -51,6 +49,17 @@ def determine_batch_size(percentage):
 
 # agent_id is 0 based
 def agent_worker(agent_id, global_memory_, lock_, queue_):
+    logger.remove()
+    logger.add(
+        f"./logs/{agent_id}_log.log",
+        format="{time} {level} {message}",
+        level="DEBUG",
+        rotation="5 MB",
+        retention="5 days",
+        enqueue=True,  # Required for multiprocessing safety
+        backtrace=True,
+        diagnose=True
+    )
     path = f'./results/{agent_id}'
     os.makedirs(path, exist_ok=True)
 
@@ -70,7 +79,8 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
     for loop in time_frame_looping:
         agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
         env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
-        print('starting loop: ', loop)
+        # print('starting loop: ', loop)
+        logger.info(f"Starting loop: {loop}")
         while not env.done:
             observation = env.env_out
             # if agent_id == 2:
@@ -79,8 +89,13 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
             actions = agent.choose_action(observation)
             # print(actions)
             actions_mapped = [ACTION_MAPPING[action] for action in actions]
-            observation_, reward_unreal, reward_real = env.step(actions_mapped)
-            print(agent_id, reward_unreal, reward_real)
+            try:
+                observation_, reward_unreal, reward_real = env.step(actions_mapped)
+            except Exception as e:
+                print('Error: {}'.format(e))
+                quit()
+            # print(agent_id, reward_unreal, reward_real)
+            logger.info(f"Reward unrealized: {reward_unreal}, Real realized: {reward_real}")
 
             # print(len(global_memory_))
             with lock_:
@@ -91,12 +106,14 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
             thing = agent.critic.sync_dir + '/critic.npy'
             if os.path.isfile(thing):
                 if os.path.getmtime(thing) != last_weight_updated:
-                    print('learned')
+                    # print('learned')
+                    logger.info('Learned!')
                     agent.load_sync_model(INDICATORS)
                     last_weight_updated = os.path.getmtime(thing)
                     # print('loaded')
-
-            queue_.put((agent_id, env.batch_size, env.balance))
+            if agent_id == 0:
+                print(f"[{agent_id}]: {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
+            # queue_.put((agent_id, env.batch_size, env.balance))
 
 def learner(global_memory_, lock_):
     # this is the global agent the one that receives all the training a
@@ -120,7 +137,7 @@ if __name__ == '__main__':
     queue = multiprocessing.Queue()
     global_memory = manager.list()
     lock = manager.Lock()
-    progress_bars = [tqdm(total=4777984, desc=f"Process {i}", position=i, ncols=100, dynamic_ncols=True) for i in range(NUM_AGENTS)]
+    # progress_bars = [tqdm(total=4777984, desc=f"Process {i}", position=i, ncols=100, dynamic_ncols=True) for i in range(NUM_AGENTS)]
 
     processes = []
     for i in range(NUM_AGENTS):
@@ -131,16 +148,19 @@ if __name__ == '__main__':
     learner_process = multiprocessing.Process(target=learner, args=(global_memory, lock))
     learner_process.start()
 
-    completed = [0] * NUM_AGENTS
-    while any(p.is_alive() for p in processes):
-        try:
-            process_id, progress, reward = queue.get(timeout=0.1)
-            if completed[process_id] < progress:
-                progress_bars[process_id].update(progress - completed[process_id])
-                progress_bars[process_id].set_postfix({"Reward": f"{reward:.2f}"})
-                completed[process_id] = progress
-        except _queue.Empty:
-            pass
+    # completed = [0] * NUM_AGENTS
+    # prog_comp = [0] * NUM_AGENTS
+    # while any(p.is_alive() for p in processes):
+    #     try:
+    #         process_id, progress, reward = queue.get(timeout=0.1)
+    #         if completed[process_id] < progress:
+    #             print(f"[{process_id}]: {prog_comp[process_id]}, {reward}")
+    #             # progress_bars[process_id].update(progress - completed[process_id])
+    #             # progress_bars[process_id].set_postfix({"Reward": f"{reward:.2f}"})
+    #             completed[process_id] = progress
+    #             prog_comp[process_id] += progress
+    #     except _queue.Empty:
+    #         pass
 
     # for i in progress_bars:
     #     i.close()
