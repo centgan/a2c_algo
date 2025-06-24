@@ -4,6 +4,7 @@ import pytz
 import src.indicators as indicators
 import numpy as np
 import pyarrow.parquet as pq
+import json
 
 est = pytz.timezone('America/New_York')
 utc = pytz.utc
@@ -21,6 +22,7 @@ class EnviroBatchProcess:
         self.train_start = datetime.strptime(train_start, "%Y-%m-%d")
         self.train_end = datetime.strptime(train_end, "%Y-%m-%d")
         self.current_year = self.train_start.year
+        self.current_date_step = self.train_start
         self.batch_size = batch_size
         self.indicator_select = indicator_select
 
@@ -42,15 +44,23 @@ class EnviroBatchProcess:
         _, self.chunk_data = next(self.chunk_gen)
         self.chunk_indicator = None
         self.batch_data_shape = self.chunk_data.shape
+        a = pd.DataFrame(self.chunk_data, columns=['o', 'h', 'l', 'c', 'timestamp'])
+        print(a.columns)
+        print(a.iloc[-1]['timestamp'], 'outside')
+        data_dict = {str(col): a[col].tolist() for col in a.columns}
+
+        # Dump to JSON string
+        with open('array.json', 'w') as f:
+            json.dump(data_dict, f, indent=2)
+        # np.savetxt('asldfkalsdjf.out', self.chunk_data, delimiter=',')
         self.indicator_class = indicators.BatchJITIndicator(self.chunk_data, indicator_select, testing=testing)
         self.env_out = self.get_env_state()
 
     def fetch_chunk_data(self):
         pf = pq.ParquetFile(self.path_to_data + str(self.current_year) + '.parquet')
         window_size = timedelta(days=30)
-        target_start = self.train_start
         buffer = []
-
+        print(self.current_date_step, self.current_date_step + window_size)
         for i in range(pf.num_row_groups):
             table = pf.read_row_group(i)
             df = table.to_pandas()
@@ -59,24 +69,25 @@ class EnviroBatchProcess:
             # Feed rows into appropriate window(s)
             for _, row in df.iterrows():
                 ts = row['timestamp']
-                if target_start <= ts < target_start + window_size:
+                if self.current_date_step <= ts < self.current_date_step + window_size:
                     buffer.append(row)
-                elif ts >= target_start + window_size:
+                elif ts >= self.current_date_step + window_size:
                     # Yield completed window
                     df_buffer = pd.DataFrame(buffer)
                     df_buffer['timestamp'] = df_buffer['timestamp'].astype('int64') // 10 ** 9
-                    yield target_start, df_buffer.to_numpy()
+                    # print(df_buffer.iloc[-1]['timestamp'])
+                    yield self.current_date_step, df_buffer.to_numpy()
                     buffer = []
-                    target_start += window_size
+                    self.current_date_step += window_size
 
                     # Check if current row belongs in next window
-                    if target_start <= ts < target_start + window_size:
+                    if self.current_date_step <= ts < self.current_date_step + window_size:
                         buffer.append(row)
 
         if buffer:
             df_buffer = pd.DataFrame(buffer)
             df_buffer['timestamp'] = df_buffer['timestamp'].astype('int64') // 10 ** 9
-            yield target_start, df_buffer.to_numpy()
+            yield self.current_date_step, df_buffer.to_numpy()
 
     def get_env_state(self):
         returning_batch = []
@@ -220,6 +231,7 @@ class EnviroBatchProcess:
         # updating state space to get next batch ie [:256] => [256:512]
         self.chunk_time_step += self.batch_size
         self.env_out = self.get_env_state()
+        # print(returning_reward)
 
         return [self.env_out, returning_reward, returning_realized]
 

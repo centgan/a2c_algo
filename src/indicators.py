@@ -188,7 +188,7 @@ class BatchJITIndicator:
             if 'news' in self.indicator_out.keys():
                 self.indicator_out['news'] = self.indicator_out['news'][start_index:] + news_values[60:]
             else:
-                self.indicator_out['news'] = news_values[60:]
+                self.indicator_out['news'] = news_values
 
 
 

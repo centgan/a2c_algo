@@ -8,6 +8,12 @@ from model import Agent
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+import pandas as pd
+import json
+import requests
+
+
 
 ALPHA_ACTOR = 0.00001
 ALPHA_CRITIC = 0.00001
@@ -17,7 +23,12 @@ LOAD_CHECK = False
 INSTRUMENT = 'NAS100_USD'
 INDICATOR = [1, 1, 0, 0, 1]  # same here rsi, mac, ob, fvg, news
 
-if __name__ == '__main__':
+api = "api-fxpractice.oanda.com"
+account_id = "101-002-25776676-003"
+token = "d8e783a23ff8bab21476e440b3d578ef-207d5f7676d7d82839a50d4907b3d6e6"
+
+
+def test_main():
     # This is for testing how the model performs on new data
     start_training = '2020-02-04'
     end_training = '2024-12-31'
@@ -57,5 +68,46 @@ if __name__ == '__main__':
     ax.grid()
 
     fig.savefig("testing.png")
+
+def oanda_fetch(from_, to_):
+    train_start = datetime.strptime(from_, "%Y-%m-%d %H:%M:%S")
+    train_end = datetime.strptime(to_, "%Y-%m-%d %H:%M:%S")
+
+    instrument = 'NAS100_USD'
+    header = {'Authorization': 'Bearer ' + token}
+    hist_path = f'/v3/accounts/{account_id}/instruments/' + instrument + '/candles'
+    full_data = {
+        'o': [],
+        'h': [],
+        'l': [],
+        'c': [],
+        'timestamp': []
+    }
+
+    from_time = time.mktime(pd.to_datetime(train_start).timetuple())
+    to_time = time.mktime(pd.to_datetime(train_end).timetuple())
+
+    query = {'from': str(from_time), 'to': str(to_time), 'granularity': 'M1'}
+    try:
+        response = requests.get('https://' + api + hist_path, headers=header, params=query)
+    except:
+        full_data.extend([train_start, train_end, 'failed on this data pull'])
+        with open('full_training_data.json', 'w') as write:
+            json.dump(full_data, write)
+        time.sleep(10)
+        response = requests.get('https://' + api + hist_path, headers=header, params=query)
+    into_json = response.json()
+    print(into_json)
+    candles = []
+    for candle_index, candle in enumerate(into_json['candles']):
+        print(candle)
+
+if __name__ == '__main__':
+    with open('array.json', 'r') as read:
+        a = json.load(read)
+    plt.plot(a['timestamp'])
+    plt.show()
+    # oanda_fetch('2011-01-23 16:00:00', '2011-01-25 11:00:00')
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
