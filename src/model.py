@@ -67,8 +67,8 @@ class Agent:
             # entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
             log_prob = action_probs.log_prob(self.action)
 
-            delta = reward + self.gamma * state_val_ - state_val
-            # delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
+            # delta = reward + self.gamma * state_val_ - state_val
+            delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
             actor_loss = -log_prob * delta #- 0.05 * entropy
             critic_loss = delta ** 2
@@ -116,8 +116,8 @@ class Agent:
             log_prob = action_probs.log_prob(action)
 
             # is the advantage function
-            delta = reward + self.gamma * state_val_ - state_val
-            # delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
+            # delta = reward + self.gamma * state_val_ - state_val
+            delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
             actor_loss = -log_prob * delta  # - 0.05 * entropy
             critic_loss = delta ** 2
