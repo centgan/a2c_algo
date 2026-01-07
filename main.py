@@ -3,10 +3,28 @@
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
+import os
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+
+import tensorflow as tf
+# Configure TensorFlow to use memory growth to prevent OOM errors
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        # Optionally limit memory per process (e.g., 4GB per agent)
+        # tf.config.set_logical_device_configuration(
+        #     gpus[0],
+        #     [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
+        # )
+    except RuntimeError as e:
+        print(f"GPU configuration error: {e}")
+
 from src.environment import EnviroBatchProcess
 from src.model import Agent
 from datetime import timedelta, datetime
-import os
 from tqdm import tqdm
 import numpy as np
 import multiprocessing
@@ -29,7 +47,7 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 4
+NUM_AGENTS = 2  # Reduced from 4 to save memory on GPU instances
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
 
@@ -136,7 +154,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
 def learner(global_memory_, lock_):
     # this is the global agent the one that receives all the training a
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-    batch_size = 64
+    batch_size = 32  # Reduced from 64 to save memory
     while True:
         # print(len(global_memory_), len(global_memory_) >= 64)
         if len(global_memory_) >= batch_size:  # Wait until we have enough experiences
