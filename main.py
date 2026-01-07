@@ -118,14 +118,14 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
 def learner(global_memory_, lock_):
     # this is the global agent the one that receives all the training a
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-
+    batch_size = 64
     while True:
         # print(len(global_memory_), len(global_memory_) >= 64)
-        if len(global_memory_) >= 64:  # Wait until we have enough experiences
+        if len(global_memory_) >= batch_size:  # Wait until we have enough experiences
             # print('mem is full')
             with lock_:
-                batch = global_memory_[:64]
-                del global_memory_[:64]  # Remove used experiences
+                batch = global_memory_[:batch_size]
+                del global_memory_[:batch_size]  # Remove used experiences
 
             # Perform batch update
             agent.batch_learn(batch)
