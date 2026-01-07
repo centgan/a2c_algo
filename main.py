@@ -99,7 +99,25 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
 
             # print(len(global_memory_))
             with lock_:
-                balanced_reward = (0.3 * np.array(reward_unreal)) + (0.7 * np.array(reward_real))
+                # Normalize rewards separately to handle different scales
+                reward_unreal_arr = np.array(reward_unreal, dtype=np.float32)
+                reward_real_arr = np.array(reward_real, dtype=np.float32)
+                
+                # Standardize each reward type separately
+                unreal_mean = np.mean(reward_unreal_arr)
+                unreal_std = np.std(reward_unreal_arr) + 1e-8
+                normalized_unreal = (reward_unreal_arr - unreal_mean) / unreal_std
+                
+                real_mean = np.mean(reward_real_arr)
+                real_std = np.std(reward_real_arr) + 1e-8
+                normalized_real = (reward_real_arr - real_mean) / real_std
+                
+                # Combine normalized rewards with weighting
+                balanced_reward = (0.3 * normalized_unreal) + (0.7 * normalized_real)
+                
+                # Clip to prevent extreme values
+                balanced_reward = np.clip(balanced_reward, -10.0, 10.0)
+                
                 global_memory_.append((observation, actions, balanced_reward, observation_))
 
             # only need to check 1 of the 2 filepaths because they should always be updating together
