@@ -40,13 +40,13 @@ class Agent:
     def choose_action(self, observation):
         state = tf.convert_to_tensor(observation)
         probs = self.actor.call(state)
-        probs = probs / tf.reduce_sum(probs, axis=1, keepdims=True)
+        # probs = probs / tf.reduce_sum(probs, axis=1, keepdims=True)
 
         action_probs = tfp.distributions.Categorical(probs=probs)
         action = action_probs.sample()
 
-        flipped_action = 2 - action
-        self.action = flipped_action
+        # flipped_action = 2 - action
+        self.action = action
 
         return self.action.numpy()
 
@@ -65,7 +65,7 @@ class Agent:
             action_probs = tfp.distributions.Categorical(probs=probs + 1e-8)
             # action = action_probs.sample()
             # entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
-            log_prob = action_probs.log_prob(state_val)
+            log_prob = action_probs.log_prob(self.action)
 
             delta = reward + self.gamma * state_val_ - state_val
             # delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
