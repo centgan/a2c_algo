@@ -4,24 +4,6 @@
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
 import os
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
-
-import tensorflow as tf
-# Configure TensorFlow to use memory growth to prevent OOM errors
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        # Optionally limit memory per process (e.g., 4GB per agent)
-        # tf.config.set_logical_device_configuration(
-        #     gpus[0],
-        #     [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
-        # )
-    except RuntimeError as e:
-        print(f"GPU configuration error: {e}")
-
 from src.environment import EnviroBatchProcess
 from src.model import Agent
 from datetime import timedelta, datetime
@@ -30,6 +12,9 @@ import numpy as np
 import multiprocessing
 import _queue
 from loguru import logger
+import tensorflow as tf
+import json
+
 
 ALPHA_ACTOR = 0.0005
 ALPHA_CRITIC = 0.0007
@@ -47,9 +32,26 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 2  # Reduced from 4 to save memory on GPU instances
+NUM_AGENTS = 4
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+
+# Configure TensorFlow to use memory growth to prevent OOM errors
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        # Optionally limit memory per process (e.g., 4GB per agent)
+        # tf.config.set_logical_device_configuration(
+        #     gpus[0],
+        #     [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
+        # )
+    except RuntimeError as e:
+        print(f"GPU configuration error: {e}")
 
 def determine_batch_size(percentage):
     if percentage < 0.4:
@@ -99,6 +101,16 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         env = EnviroBatchProcess(INSTRUMENT, loop[0].strftime("%Y-%m-%d"), loop[1].strftime("%Y-%m-%d"), 1, indicator_select=INDICATORS)
         # print('starting loop: ', loop)
         logger.info(f"Starting loop: {loop}")
+        
+        # Track performance metrics for this agent
+        performance_metrics = {
+            'balance_history': [],
+            'reward_unreal_history': [],
+            'reward_real_history': [],
+            'timestamps': [],
+            'num_trades': 0
+        }
+        
         while not env.done:
             observation = env.env_out
             # if agent_id == 2:
@@ -107,6 +119,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
             actions = agent.choose_action(observation)
             # print(actions)
             actions_mapped = [ACTION_MAPPING[action] for action in actions]
+            
             try:
                 observation_, reward_unreal, reward_real = env.step(actions_mapped)
             except Exception as e:
@@ -114,8 +127,14 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
                 quit()
             # print(agent_id, reward_unreal, reward_real)
             logger.info(f"Reward unrealized: {reward_unreal}, Real realized: {reward_real}")
+            
+            # Track metrics
+            performance_metrics['balance_history'].append(float(env.balance))
+            performance_metrics['reward_unreal_history'].append([float(r) for r in reward_unreal])
+            performance_metrics['reward_real_history'].append([float(r) for r in reward_real])
+            performance_metrics['timestamps'].append(int(env.chunk_data[-1][-1]))
+            performance_metrics['num_trades'] = len(env.orders['closed'])
 
-            # print(len(global_memory_))
             with lock_:
                 # Normalize rewards separately to handle different scales
                 reward_unreal_arr = np.array(reward_unreal, dtype=np.float32)
@@ -147,14 +166,29 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
                     agent.load_sync_model(INDICATORS)
                     last_weight_updated = os.path.getmtime(thing)
                     # print('loaded')
+            
             if agent_id == 0:
                 print(f"[{agent_id}]: {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
-            # queue_.put((agent_id, env.batch_size, env.balance))
+        
+        # Save final metrics when loop completes (only save once at the end to avoid I/O overhead)
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_metrics_file = f'{path}/final_metrics_{timestamp_str}.json'
+        with open(final_metrics_file, 'w') as f:
+            json.dump(performance_metrics, f, indent=2)
+        logger.info(f"Saved final metrics to {final_metrics_file}")
+        print(f"[Agent {agent_id}] Saved {len(performance_metrics['balance_history'])} steps to {final_metrics_file}")
 
 def learner(global_memory_, lock_):
     # this is the global agent the one that receives all the training a
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
-    batch_size = 32  # Reduced from 64 to save memory
+    batch_size = 64
+    
+    # Checkpoint tracking
+    update_count = 0
+    best_avg_reward = float('-inf')  # Start at negative infinity to allow negative rewards
+    reward_history = []
+    checkpoint_interval = 1000  # Save checkpoint every 100 updates
+    
     while True:
         # print(len(global_memory_), len(global_memory_) >= 64)
         if len(global_memory_) >= batch_size:  # Wait until we have enough experiences
@@ -163,9 +197,33 @@ def learner(global_memory_, lock_):
                 batch = global_memory_[:batch_size]
                 del global_memory_[:batch_size]  # Remove used experiences
 
+            # Extract rewards from batch for tracking
+            _, _, rewards, _ = zip(*batch)
+            avg_reward = np.mean([np.mean(r) for r in rewards])
+            reward_history.append(avg_reward)
+            
             # Perform batch update
             agent.batch_learn(batch)
-            agent.save_sync_model()
+            agent.save_sync_model()  # Always save for agent synchronization
+            
+            update_count += 1
+            
+            # Periodic checkpoint saving (every 100 updates)
+            if update_count % checkpoint_interval == 0:
+                # Calculate rolling average over last 100 updates
+                recent_avg = np.mean(reward_history[-100:]) if len(reward_history) >= 100 else np.mean(reward_history)
+                
+                print(f"[Learner] Update {update_count} | Avg Reward (last batch): {avg_reward:.4f} | "
+                      f"Rolling Avg (1000): {recent_avg:.4f} | Best: {best_avg_reward:.4f}")
+                
+                # Save checkpoint
+                agent.save_model()
+                
+                # If this is the best model so far, save it separately
+                if recent_avg > best_avg_reward:
+                    best_avg_reward = recent_avg
+                    print(f"[Learner] New best model! Avg reward: {best_avg_reward:.4f}")
+                    agent.save_best_model()  # Save to separate best_model directory
 
 if __name__ == '__main__':
     multiprocessing.set_start_method('spawn')

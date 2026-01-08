@@ -67,7 +67,7 @@ class Agent:
             # entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
             log_prob = action_probs.log_prob(self.action)
 
-            # delta = reward + self.gamma * state_val_ - state_val
+            delta = reward + self.gamma * state_val_ - state_val
             delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
             actor_loss = -log_prob * delta #- 0.05 * entropy
@@ -116,7 +116,7 @@ class Agent:
             log_prob = action_probs.log_prob(action)
 
             # is the advantage function
-            # delta = reward + self.gamma * state_val_ - state_val
+            delta = reward + self.gamma * state_val_ - state_val
             delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
             actor_loss = -log_prob * delta  # - 0.05 * entropy
@@ -171,6 +171,14 @@ class Agent:
         self.logger.info('... saving model ...')
         self.actor.save_weights(self.actor.checkpoint_file)
         self.critic.save_weights(self.critic.checkpoint_file)
+    
+    def save_best_model(self):
+        """Save the best model to a separate directory"""
+        self.logger.info('... saving best model ...')
+        best_dir = 'tmp/best_model'
+        os.makedirs(best_dir, exist_ok=True)
+        self.actor.save_weights(os.path.join(best_dir, 'actor_best.weights.h5'))
+        self.critic.save_weights(os.path.join(best_dir, 'critic_best.weights.h5'))
 
     def load_model(self):
         # print('... loading model ...')
