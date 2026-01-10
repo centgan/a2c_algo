@@ -32,7 +32,7 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 4
+NUM_AGENTS = 16
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
 
@@ -167,8 +167,8 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
                     last_weight_updated = os.path.getmtime(thing)
                     # print('loaded')
             
-            if agent_id == 0:
-                print(f"[{agent_id}]: {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
+            # if agent_id == 0:
+            print(f"[{agent_id}]: {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
         
         # Save final metrics when loop completes (only save once at the end to avoid I/O overhead)
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
