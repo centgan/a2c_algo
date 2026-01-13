@@ -6,6 +6,7 @@
 import os
 from src.environment import EnviroBatchProcess
 from src.model import Agent
+from src.checkpoint_manager import CheckpointManager
 from datetime import timedelta, datetime
 from tqdm import tqdm
 import numpy as np
@@ -14,6 +15,8 @@ import _queue
 from loguru import logger
 import tensorflow as tf
 import json
+import signal
+import sys
 
 
 ALPHA_ACTOR = 0.0005
@@ -32,9 +35,14 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 4
+NUM_AGENTS = 32
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
+
+# Checkpoint configuration
+CHECKPOINT_DIR = './checkpoints'
+CHECKPOINT_INTERVAL = 600  # Save every 10 minutes (in seconds)
+RESUME_TRAINING = True  # Set to False to start fresh
 
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
@@ -136,24 +144,16 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
             performance_metrics['num_trades'] = len(env.orders['closed'])
 
             with lock_:
-                # Normalize rewards separately to handle different scales
+                # Use simple reward combination without aggressive normalization
+                # The learner will handle normalization with running statistics
                 reward_unreal_arr = np.array(reward_unreal, dtype=np.float32)
                 reward_real_arr = np.array(reward_real, dtype=np.float32)
                 
-                # Standardize each reward type separately
-                unreal_mean = np.mean(reward_unreal_arr)
-                unreal_std = np.std(reward_unreal_arr) + 1e-8
-                normalized_unreal = (reward_unreal_arr - unreal_mean) / unreal_std
+                # Combine rewards with weighting (unrealized + realized)
+                balanced_reward = (0.3 * reward_unreal_arr) + (0.7 * reward_real_arr)
                 
-                real_mean = np.mean(reward_real_arr)
-                real_std = np.std(reward_real_arr) + 1e-8
-                normalized_real = (reward_real_arr - real_mean) / real_std
-                
-                # Combine normalized rewards with weighting
-                balanced_reward = (0.3 * normalized_unreal) + (0.7 * normalized_real)
-                
-                # Clip to prevent extreme values
-                balanced_reward = np.clip(balanced_reward, -10.0, 10.0)
+                # Light clipping to prevent extreme outliers
+                balanced_reward = np.clip(balanced_reward, -500.0, 500.0)
                 
                 global_memory_.append((observation, actions, balanced_reward, observation_))
 
@@ -178,16 +178,44 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         logger.info(f"Saved final metrics to {final_metrics_file}")
         print(f"[Agent {agent_id}] Saved {len(performance_metrics['balance_history'])} steps to {final_metrics_file}")
 
-def learner(global_memory_, lock_):
+def learner(global_memory_, lock_, checkpoint_mgr):
+    # Configure TensorFlow GPU for this process
+    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+    os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+    
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            print(f"[Learner] GPU configuration error: {e}")
+    
     # this is the global agent the one that receives all the training a
     agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
     batch_size = 64
     
-    # Checkpoint tracking
-    update_count = 0
-    best_avg_reward = float('-inf')  # Start at negative infinity to allow negative rewards
-    reward_history = []
-    checkpoint_interval = 1000  # Save checkpoint every 100 updates
+    # Try to load checkpoint
+    learner_state = checkpoint_mgr.load_learner_state()
+    if learner_state and RESUME_TRAINING:
+        update_count = learner_state['update_count']
+        best_avg_reward = learner_state['best_avg_reward']
+        reward_history = learner_state['reward_history']
+        print(f"[Learner] Resuming from checkpoint at update {update_count}, best reward: {best_avg_reward:.4f}")
+    else:
+        update_count = 0
+        best_avg_reward = float('-inf')
+        reward_history = []
+        print("[Learner] Starting fresh training")
+    
+    checkpoint_interval = 1000  # Save checkpoint every 1000 updates
+    last_checkpoint_time = datetime.now()
+    
+    # Running statistics for reward normalization
+    reward_mean = 0.0
+    reward_var = 1.0
+    reward_count = 0
+    alpha_stats = 0.99  # Exponential moving average coefficient
     
     while True:
         # print(len(global_memory_), len(global_memory_) >= 64)
@@ -195,26 +223,50 @@ def learner(global_memory_, lock_):
             # print('mem is full')
             with lock_:
                 batch = global_memory_[:batch_size]
-                del global_memory_[:batch_size]  # Remove used experiences
+                del global_memory_[:batch_size]
 
-            # Extract rewards from batch for tracking
-            _, _, rewards, _ = zip(*batch)
+            # Extract rewards and update running statistics
+            states, actions, rewards, next_states = zip(*batch)
+            rewards_array = np.array(rewards, dtype=np.float32)
+            
+            # Update running mean and variance
+            batch_mean = np.mean(rewards_array)
+            batch_var = np.var(rewards_array)
+            
+            if reward_count == 0:
+                reward_mean = batch_mean
+                reward_var = batch_var
+            else:
+                reward_mean = alpha_stats * reward_mean + (1 - alpha_stats) * batch_mean
+                reward_var = alpha_stats * reward_var + (1 - alpha_stats) * batch_var
+            
+            reward_count += 1
+            
+            # Normalize rewards using running statistics
+            reward_std = np.sqrt(reward_var) + 1e-8
+            normalized_rewards = [(r - reward_mean) / reward_std for r in rewards]
+            normalized_rewards = [np.clip(r, -10.0, 10.0) for r in normalized_rewards]
+            
+            # Reconstruct batch with normalized rewards
+            normalized_batch = list(zip(states, actions, normalized_rewards, next_states))
+            
+            # Track average reward before normalization
             avg_reward = np.mean([np.mean(r) for r in rewards])
             reward_history.append(avg_reward)
             
             # Perform batch update
-            agent.batch_learn(batch)
-            agent.save_sync_model()  # Always save for agent synchronization
+            grad_norm = agent.batch_learn(normalized_batch)
+            agent.save_sync_model()
             
             update_count += 1
             
-            # Periodic checkpoint saving (every 100 updates)
+            # Periodic checkpoint saving (every 1000 updates)
             if update_count % checkpoint_interval == 0:
-                # Calculate rolling average over last 100 updates
                 recent_avg = np.mean(reward_history[-100:]) if len(reward_history) >= 100 else np.mean(reward_history)
                 
-                print(f"[Learner] Update {update_count} | Avg Reward (last batch): {avg_reward:.4f} | "
-                      f"Rolling Avg (1000): {recent_avg:.4f} | Best: {best_avg_reward:.4f}")
+                print(f"[Learner] Update {update_count} | Avg Reward: {avg_reward:.4f} | "
+                      f"Rolling Avg (100): {recent_avg:.4f} | Best: {best_avg_reward:.4f} | "
+                      f"Grad Norm: {grad_norm:.4f} | Reward Mean: {reward_mean:.2f} | Std: {reward_std:.2f}")
                 
                 # Save checkpoint
                 agent.save_model()
@@ -223,15 +275,52 @@ def learner(global_memory_, lock_):
                 if recent_avg > best_avg_reward:
                     best_avg_reward = recent_avg
                     print(f"[Learner] New best model! Avg reward: {best_avg_reward:.4f}")
-                    agent.save_best_model()  # Save to separate best_model directory
+                    agent.save_best_model()
+            
+            # Time-based checkpoint saving (every 10 minutes)
+            current_time = datetime.now()
+            if (current_time - last_checkpoint_time).total_seconds() >= CHECKPOINT_INTERVAL:
+                checkpoint_mgr.save_learner_state(update_count, best_avg_reward, reward_history)
+                print(f"[Learner] Saved checkpoint at update {update_count}")
+                last_checkpoint_time = current_time
+
+
 
 if __name__ == '__main__':
+    # Import necessary modules for graceful shutdown
+    import sys
+    import signal
+
+    # Initialize checkpoint manager
+    checkpoint_mgr = CheckpointManager(CHECKPOINT_DIR)
+    
+    # Check for existing checkpoint
+    resume_info = checkpoint_mgr.get_resume_info()
+    print(f"\n{'='*60}")
+    print(resume_info['message'])
+    print(f"{'='*60}\n")
+    
+    # Save initial training state
+    checkpoint_mgr.save_training_state(
+        NUM_AGENTS, START_TRAINING, END_TRAINING, INSTRUMENT, INDICATORS
+    )
+    
     multiprocessing.set_start_method('spawn')
     manager = multiprocessing.Manager()
     queue = multiprocessing.Queue()
     global_memory = manager.list()
     lock = manager.Lock()
-    # progress_bars = [tqdm(total=4777984, desc=f"Process {i}", position=i, ncols=100, dynamic_ncols=True) for i in range(NUM_AGENTS)]
+    
+    # Graceful shutdown handler
+    def signal_handler(sig, frame):
+        print('\n\n[Main] Received interrupt signal. Saving checkpoint and shutting down gracefully...')
+        # Give learner a moment to save
+        import time
+        time.sleep(2)
+        print('[Main] Checkpoint saved. Exiting.')
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
 
     processes = []
     for i in range(NUM_AGENTS):
@@ -239,7 +328,7 @@ if __name__ == '__main__':
         processes.append(p)
         p.start()
 
-    learner_process = multiprocessing.Process(target=learner, args=(global_memory, lock))
+    learner_process = multiprocessing.Process(target=learner, args=(global_memory, lock, checkpoint_mgr))
     learner_process.start()
 
     # completed = [0] * NUM_AGENTS

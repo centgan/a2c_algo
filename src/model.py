@@ -114,12 +114,15 @@ class Agent:
 
             action_probs = tfp.distributions.Categorical(probs=probs)
             log_prob = action_probs.log_prob(action)
+            
+            # Add entropy for exploration
+            entropy = -tf.reduce_sum(probs * tf.math.log(probs + 1e-8), axis=1)
 
             # is the advantage function
             delta = reward + self.gamma * state_val_ - state_val
             delta = (delta - tf.reduce_mean(delta)) / tf.math.reduce_std(delta + 1e-8)
 
-            actor_loss = -log_prob * delta  # - 0.05 * entropy
+            actor_loss = -log_prob * delta - 0.01 * entropy  # Re-enabled with lower coefficient
             critic_loss = delta ** 2
 
         gradient_actor = tape.gradient(actor_loss, self.actor.trainable_variables)
@@ -130,6 +133,13 @@ class Agent:
         self.critic.optimizer.apply_gradients(zip(
             gradient_critic, self.critic.trainable_variables
         ))
+        
+        # Calculate gradient norm for monitoring
+        actor_grad_norm = tf.reduce_mean([tf.norm(g) for g in gradient_actor if g is not None])
+        critic_grad_norm = tf.reduce_mean([tf.norm(g) for g in gradient_critic if g is not None])
+        total_grad_norm = (actor_grad_norm + critic_grad_norm) / 2.0
+        
+        return float(total_grad_norm.numpy())
 
     def save_sync_model(self):
         # if not self.actor.built:
