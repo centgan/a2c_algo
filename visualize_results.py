@@ -12,32 +12,47 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 
-def load_latest_metrics(agent_id):
-    """Load the most recent metrics file for an agent"""
+def load_all_metrics(agent_id):
+    """Load and merge all metrics files for an agent across all training runs"""
     results_dir = Path(f'./results/{agent_id}')
-    
+
     if not results_dir.exists():
         print(f"No results directory found for agent {agent_id}")
         return None
-    
+
     # Find all metrics files
-    metrics_files = list(results_dir.glob('*.json'))
-    
+    metrics_files = sorted(results_dir.glob('final_metrics_*.json'))
+
     if not metrics_files:
         print(f"No metrics files found for agent {agent_id}")
         return None
-    
-    # Get the most recent file
-    latest_file = max(metrics_files, key=lambda p: p.stat().st_mtime)
-    
-    print(f"Loading metrics from: {latest_file}")
-    
-    with open(latest_file, 'r') as f:
-        return json.load(f)
+
+    print(f"Found {len(metrics_files)} run(s) for agent {agent_id} — merging...")
+
+    merged = {
+        'balance_history': [],
+        'reward_unreal_history': [],
+        'reward_real_history': [],
+        'timestamps': [],
+        'num_trades': 0,
+    }
+
+    for f in metrics_files:
+        print(f"  Loading: {f.name}")
+        with open(f, 'r') as fh:
+            data = json.load(fh)
+        merged['balance_history'].extend(data.get('balance_history', []))
+        merged['reward_unreal_history'].extend(data.get('reward_unreal_history', []))
+        merged['reward_real_history'].extend(data.get('reward_real_history', []))
+        merged['timestamps'].extend(data.get('timestamps', []))
+        merged['num_trades'] += data.get('num_trades', 0)
+
+    print(f"  Total steps merged: {len(merged['balance_history'])}")
+    return merged
 
 def plot_agent_performance(agent_id):
-    """Create comprehensive performance plots for an agent"""
-    metrics = load_latest_metrics(agent_id)
+    """Create comprehensive performance plots for an agent across all training runs"""
+    metrics = load_all_metrics(agent_id)
     
     if metrics is None:
         return
@@ -47,7 +62,7 @@ def plot_agent_performance(agent_id):
     
     # Create figure with subplots
     fig, axes = plt.subplots(3, 1, figsize=(14, 10))
-    fig.suptitle(f'Agent {agent_id} Performance Metrics', fontsize=16, fontweight='bold')
+    fig.suptitle(f'Agent {agent_id} Performance Metrics (All Runs Combined)', fontsize=16, fontweight='bold')
     
     # Plot 1: Balance over time
     axes[0].plot(timestamps, metrics['balance_history'], linewidth=1.5, color='blue')
@@ -139,7 +154,7 @@ def compare_all_agents():
     
     for agent_dir in sorted(agent_dirs):
         agent_id = agent_dir.name
-        metrics = load_latest_metrics(agent_id)
+        metrics = load_all_metrics(agent_id)
         
         if metrics is None:
             continue
