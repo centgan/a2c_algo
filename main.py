@@ -100,6 +100,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         time_frame_looping.append([START_TRAINING, agent_start])
 
     last_weight_updated = 0.0
+    step = 0
     # steps = 0
     # while steps < 1_000_000:
     #     steps += 3 * (agent_id + 1)
@@ -120,6 +121,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         }
         
         while not env.done:
+            step += 1
             observation = env.env_out
             # if agent_id == 2:
             #     print(observation)
@@ -167,8 +169,8 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
                     last_weight_updated = os.path.getmtime(thing)
                     # print('loaded')
             
-            if agent_id == 0:
-                print(f"[{agent_id}]: {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
+            if agent_id == 0 and step % 1000 == 0:
+                print(f"[{agent_id}]: step={step}, {env.chunk_time_step}, {datetime.fromtimestamp(env.chunk_data[-1][-1])}, {env.balance}")
         
         # Save final metrics when loop completes (only save once at the end to avoid I/O overhead)
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
