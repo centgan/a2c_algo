@@ -203,7 +203,14 @@ def learner(global_memory_, lock_, checkpoint_mgr):
         update_count = learner_state['update_count']
         best_avg_reward = learner_state['best_avg_reward']
         reward_history = learner_state['reward_history']
-        print(f"[Learner] Resuming from checkpoint at update {update_count}, best reward: {best_avg_reward:.4f}")
+        try:
+            agent.load_model()  # Restore actual network weights (critical for resume!)
+            print(f"[Learner] Resuming from checkpoint at update {update_count}, best reward: {best_avg_reward:.4f}")
+        except Exception as e:
+            print(f"[Learner] Could not load model weights ({e}), starting fresh weights")
+            update_count = 0
+            best_avg_reward = float('-inf')
+            reward_history = []
     else:
         update_count = 0
         best_avg_reward = float('-inf')
@@ -271,19 +278,24 @@ def learner(global_memory_, lock_, checkpoint_mgr):
                       f"Grad Norm: {grad_norm:.4f} | Reward Mean: {reward_mean:.2f} | Std: {reward_std:.2f}")
                 
                 # Save checkpoint
-                agent.save_model()
-                
-                # If this is the best model so far, save it separately
-                if recent_avg > best_avg_reward:
-                    best_avg_reward = recent_avg
-                    print(f"[Learner] New best model! Avg reward: {best_avg_reward:.4f}")
-                    agent.save_best_model()
+                try:
+                    agent.save_model()
+                    if recent_avg > best_avg_reward:
+                        best_avg_reward = recent_avg
+                        print(f"[Learner] New best model! Avg reward: {best_avg_reward:.4f}")
+                        agent.save_best_model()
+                except Exception as e:
+                    print(f"[Learner] WARNING: Failed to save model weights: {e}")
             
             # Time-based checkpoint saving (every 10 minutes)
             current_time = datetime.now()
             if (current_time - last_checkpoint_time).total_seconds() >= CHECKPOINT_INTERVAL:
-                checkpoint_mgr.save_learner_state(update_count, best_avg_reward, reward_history)
-                print(f"[Learner] Saved checkpoint at update {update_count}")
+                try:
+                    checkpoint_mgr.save_learner_state(update_count, best_avg_reward, reward_history)
+                    agent.save_model()
+                    print(f"[Learner] Saved checkpoint at update {update_count}")
+                except Exception as e:
+                    print(f"[Learner] WARNING: Failed to save checkpoint: {e}")
                 last_checkpoint_time = current_time
 
 

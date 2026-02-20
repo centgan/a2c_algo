@@ -30,6 +30,7 @@ class Agent:
         act = self.actor.sync_dir + '/actor.npy'
         crit = self.critic.sync_dir + '/critic.npy'
         os.makedirs(self.actor.sync_dir, exist_ok=True)
+        os.makedirs(self.actor.checkpoint_dir, exist_ok=True)  # ensure persistent checkpoint dir exists
         try:
             os.remove(act)
             os.remove(crit)
