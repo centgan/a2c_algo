@@ -140,7 +140,7 @@ def determine_batch_size(percentage):
         return BATCH_SIZES[5]
 
 # agent_id is 0 based
-def agent_worker(agent_id, global_memory_, lock_, queue_):
+def agent_worker(agent_id, global_memory_, lock_, queue_, num_agents=32):
     logger.remove()
     logger.add(
         f"./logs/{agent_id}_log.log",
@@ -155,7 +155,7 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
     path = f'./results/{agent_id}'
     os.makedirs(path, exist_ok=True)
 
-    date_delta = (END_TRAINING - START_TRAINING).days // NUM_AGENTS
+    date_delta = (END_TRAINING - START_TRAINING).days // num_agents
     agent_start = START_TRAINING + timedelta(agent_id * date_delta)
 
     # loop the environment start dates to ensure that start time steps are the same for all workers
@@ -445,7 +445,7 @@ if __name__ == '__main__':
     # ─── Launch agent workers ────────────────────────────────────────────
     processes = []
     for i in range(NUM_AGENTS):
-        p = multiprocessing.Process(target=agent_worker, args=(i, global_memory, lock, queue))
+        p = multiprocessing.Process(target=agent_worker, args=(i, global_memory, lock, queue, NUM_AGENTS))
         processes.append(p)
         p.start()
 
