@@ -8,23 +8,32 @@ import logging
 import numpy as np
 
 class Agent:
-    def __init__(self, alpha_actor=1., alpha_critic=1., gamma=0.99, action_size=1):
+    def __init__(self, alpha_actor=1., alpha_critic=1., gamma=0.99, action_size=1, strategy=None):
         self.action_size = action_size
         self.gamma = gamma
         self.action = None
         self.action_space = [i for i in range(self.action_size)]
+        self.strategy = strategy
 
-        self.actor = ActorNetwork(action_size=action_size)
-        self.critic = CriticNetwork()
-
-        self.actor.compile(optimizer=Adam(learning_rate=alpha_actor, clipnorm=1.0))
-        self.critic.compile(optimizer=Adam(learning_rate=alpha_critic, clipnorm=1.0))
+        # Create models inside strategy scope if multi-GPU, otherwise default
+        if self.strategy is not None:
+            with self.strategy.scope():
+                self._build_and_compile(alpha_actor, alpha_critic, action_size)
+        else:
+            self._build_and_compile(alpha_actor, alpha_critic, action_size)
 
         self.balance = 0
 
         self.logger = logging.getLogger()
         logging.basicConfig(filename='../log.log', level=logging.INFO,
                             format='%(asctime)s  %(levelname)s: %(message)s')
+
+    def _build_and_compile(self, alpha_actor, alpha_critic, action_size):
+        """Build actor/critic networks and compile with optimizers."""
+        self.actor = ActorNetwork(action_size=action_size)
+        self.critic = CriticNetwork()
+        self.actor.compile(optimizer=Adam(learning_rate=alpha_actor, clipnorm=1.0))
+        self.critic.compile(optimizer=Adam(learning_rate=alpha_critic, clipnorm=1.0))
 
         # make the folder for sync weights first and then delete any files that were used in the previous run
         act = self.actor.sync_dir + '/actor.npy'

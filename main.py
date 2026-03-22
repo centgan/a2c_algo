@@ -1,9 +1,8 @@
-# This is a sample Python script.
-
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+# A2C Multi-Agent Training with Single/Multi-GPU support
+# Usage: python main.py --help
 
 import os
+import argparse
 from src.environment import EnviroBatchProcess
 from src.model import Agent
 from src.checkpoint_manager import CheckpointManager
@@ -19,6 +18,7 @@ import signal
 import sys
 
 
+# ─── Default Hyperparameters ─────────────────────────────────────────────────
 ALPHA_ACTOR = 0.0005
 ALPHA_CRITIC = 0.0007
 GAMMA = 0.95
@@ -35,31 +35,95 @@ INDICATORS = [1, 1, 0, 0, 1]  # in order of rsi, macd, ob, fvg, news
 # INDICATORS = [0, 0, 1, 1, 1]
 ACTION_MAPPING = ['sell', 'hold', 'buy']
 
-NUM_AGENTS = 32
 START_TRAINING = datetime.strptime('2011-01-03', '%Y-%m-%d')
 END_TRAINING = datetime.strptime('2020-02-03', '%Y-%m-%d')
 
 # Checkpoint configuration
 CHECKPOINT_DIR = './checkpoints'
 CHECKPOINT_INTERVAL = 600  # Save every 10 minutes (in seconds)
-RESUME_TRAINING = True  # Set to False to start fresh
 
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
 
-# Configure TensorFlow to use memory growth to prevent OOM errors
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
+# ─── CLI Argument Parser ─────────────────────────────────────────────────────
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='A2C Multi-Agent Training — Single or Multi-GPU',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument('--num-gpus', type=int, default=1, choices=[1, 2],
+                        help='Number of GPUs to use (1 = single GPU, 2 = dual GPU with MirroredStrategy)')
+    parser.add_argument('--num-agents', type=int, default=32,
+                        help='Number of parallel agent workers')
+    parser.add_argument('--batch-size', type=int, default=256,
+                        help='Learner batch size')
+    parser.add_argument('--epochs', type=int, default=2,
+                        help='Number of training epochs')
+    parser.add_argument('--resume', action='store_true', default=True,
+                        help='Resume training from checkpoint (default: True)')
+    parser.add_argument('--no-resume', dest='resume', action='store_false',
+                        help='Start fresh training, ignore checkpoints')
+    parser.add_argument('--gpu-memory-limit', type=int, default=None,
+                        help='Per-GPU memory limit in MB (e.g. 20000 for RTX 3090). '
+                             'If not set, memory growth is used instead.')
+    parser.add_argument('--mixed-precision', action='store_true', default=False,
+                        help='Enable mixed precision (float16) training for faster RTX performance')
+    return parser.parse_args()
+
+
+# ─── GPU Configuration ───────────────────────────────────────────────────────
+def configure_gpus(args):
+    """
+    Detect and configure GPUs. Returns a tf.distribute.Strategy:
+      - MirroredStrategy when --num-gpus 2
+      - Default (single device) strategy otherwise
+    """
+    # Set env vars BEFORE any TF ops
+    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+    os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+
+    gpus = tf.config.list_physical_devices('GPU')
+
+    if not gpus:
+        print('[GPU] No GPUs detected — training will run on CPU.')
+        return tf.distribute.get_strategy()  # default / CPU strategy
+
+    # Print detected GPUs
+    for i, gpu in enumerate(gpus):
+        print(f'[GPU] Detected GPU {i}: {gpu.name}')
+
+    # Apply memory configuration to every physical GPU
     try:
         for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        # Optionally limit memory per process (e.g., 4GB per agent)
-        # tf.config.set_logical_device_configuration(
-        #     gpus[0],
-        #     [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
-        # )
+            if args.gpu_memory_limit:
+                # Hard memory cap — useful when sharing a GPU or to leave headroom
+                tf.config.set_logical_device_configuration(
+                    gpu,
+                    [tf.config.LogicalDeviceConfiguration(memory_limit=args.gpu_memory_limit)]
+                )
+                print(f'[GPU] Set {gpu.name} memory limit to {args.gpu_memory_limit} MB')
+            else:
+                # Dynamic memory growth — recommended for RTX cards
+                tf.config.experimental.set_memory_growth(gpu, True)
+                print(f'[GPU] Enabled memory growth for {gpu.name}')
     except RuntimeError as e:
-        print(f"GPU configuration error: {e}")
+        print(f'[GPU] Configuration error (must be set before TF init): {e}')
+
+    # Mixed precision (optional — RTX Ampere/Ada support FP16 tensor cores)
+    if args.mixed_precision:
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        print('[GPU] Mixed precision (float16) enabled')
+
+    # Build distribution strategy
+    if args.num_gpus == 2:
+        if len(gpus) < 2:
+            print(f'[GPU] WARNING: Requested 2 GPUs but only {len(gpus)} found. '
+                  f'Falling back to single-GPU training.')
+            return tf.distribute.get_strategy()
+        strategy = tf.distribute.MirroredStrategy()
+        print(f'[GPU] MirroredStrategy active — distributing across {strategy.num_replicas_in_sync} GPUs')
+        return strategy
+    else:
+        print('[GPU] Single-GPU training mode')
+        return tf.distribute.get_strategy()
 
 def determine_batch_size(percentage):
     if percentage < 0.4:
@@ -180,26 +244,52 @@ def agent_worker(agent_id, global_memory_, lock_, queue_):
         logger.info(f"Saved final metrics to {final_metrics_file}")
         print(f"[Agent {agent_id}] Saved {len(performance_metrics['balance_history'])} steps to {final_metrics_file}")
 
-def learner(global_memory_, lock_, checkpoint_mgr):
-    # Configure TensorFlow GPU for this process
+def learner(global_memory_, lock_, checkpoint_mgr, num_gpus=1, gpu_memory_limit=None,
+            mixed_precision=False, resume_training=True):
+    """
+    Central learner process — trains the global model on batched experiences.
+    When num_gpus=2, uses MirroredStrategy to distribute across both GPUs.
+    """
+    # Configure GPUs inside this spawned process (TF config must happen per-process)
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
     os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
-    
+
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
             for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
+                if gpu_memory_limit:
+                    tf.config.set_logical_device_configuration(
+                        gpu,
+                        [tf.config.LogicalDeviceConfiguration(memory_limit=gpu_memory_limit)]
+                    )
+                else:
+                    tf.config.experimental.set_memory_growth(gpu, True)
         except RuntimeError as e:
             print(f"[Learner] GPU configuration error: {e}")
-    
-    # this is the global agent the one that receives all the training a
-    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA, action_size=ACTION_SIZE)
+
+    if mixed_precision:
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        print('[Learner] Mixed precision (float16) enabled')
+
+    # Build distribution strategy
+    strategy = None
+    if num_gpus == 2 and len(gpus) >= 2:
+        strategy = tf.distribute.MirroredStrategy()
+        print(f'[Learner] MirroredStrategy active — {strategy.num_replicas_in_sync} GPUs')
+    else:
+        if num_gpus == 2 and len(gpus) < 2:
+            print(f'[Learner] WARNING: Requested 2 GPUs but only {len(gpus)} found. Using single GPU.')
+        print(f'[Learner] Single-GPU training mode (detected {len(gpus)} GPU(s))')
+
+    # Create the global agent (with multi-GPU strategy if applicable)
+    agent = Agent(alpha_actor=ALPHA_ACTOR, alpha_critic=ALPHA_CRITIC, gamma=GAMMA,
+                  action_size=ACTION_SIZE, strategy=strategy)
     batch_size = 64
     
     # Try to load checkpoint
     learner_state = checkpoint_mgr.load_learner_state()
-    if learner_state and RESUME_TRAINING:
+    if learner_state and resume_training:
         update_count = learner_state['update_count']
         best_avg_reward = learner_state['best_avg_reward']
         reward_history = learner_state['reward_history']
@@ -301,18 +391,35 @@ def learner(global_memory_, lock_, checkpoint_mgr):
 
 
 if __name__ == '__main__':
-    # Import necessary modules for graceful shutdown
-    import sys
-    import signal
+    # ─── Parse CLI Arguments ─────────────────────────────────────────────
+    args = parse_args()
+
+    # Override globals from CLI
+    NUM_AGENTS = args.num_agents
+    BATCH_SIZE = args.batch_size
+    EPOCHES = args.epochs
+    RESUME_TRAINING = args.resume
+
+    # ─── Configure GPUs (main process — for startup diagnostics) ────────
+    main_strategy = configure_gpus(args)
+
+    print(f"\n{'='*60}")
+    print(f"  A2C Training Configuration")
+    print(f"  GPUs requested : {args.num_gpus}")
+    print(f"  Agents         : {NUM_AGENTS}")
+    print(f"  Batch size     : {BATCH_SIZE}")
+    print(f"  Resume         : {RESUME_TRAINING}")
+    print(f"  Mixed precision: {args.mixed_precision}")
+    if args.gpu_memory_limit:
+        print(f"  GPU mem limit  : {args.gpu_memory_limit} MB")
+    print(f"{'='*60}\n")
 
     # Initialize checkpoint manager
     checkpoint_mgr = CheckpointManager(CHECKPOINT_DIR)
     
     # Check for existing checkpoint
     resume_info = checkpoint_mgr.get_resume_info()
-    print(f"\n{'='*60}")
     print(resume_info['message'])
-    print(f"{'='*60}\n")
     
     # Save initial training state
     checkpoint_mgr.save_training_state(
@@ -328,7 +435,6 @@ if __name__ == '__main__':
     # Graceful shutdown handler
     def signal_handler(sig, frame):
         print('\n\n[Main] Received interrupt signal. Saving checkpoint and shutting down gracefully...')
-        # Give learner a moment to save
         import time
         time.sleep(2)
         print('[Main] Checkpoint saved. Exiting.')
@@ -336,31 +442,26 @@ if __name__ == '__main__':
     
     signal.signal(signal.SIGINT, signal_handler)
 
+    # ─── Launch agent workers ────────────────────────────────────────────
     processes = []
     for i in range(NUM_AGENTS):
         p = multiprocessing.Process(target=agent_worker, args=(i, global_memory, lock, queue))
         processes.append(p)
         p.start()
 
-    learner_process = multiprocessing.Process(target=learner, args=(global_memory, lock, checkpoint_mgr))
+    # ─── Launch learner (with GPU strategy config passed through) ────────
+    learner_process = multiprocessing.Process(
+        target=learner,
+        args=(global_memory, lock, checkpoint_mgr),
+        kwargs={
+            'num_gpus': args.num_gpus,
+            'gpu_memory_limit': args.gpu_memory_limit,
+            'mixed_precision': args.mixed_precision,
+            'resume_training': RESUME_TRAINING,
+        }
+    )
     learner_process.start()
 
-    # completed = [0] * NUM_AGENTS
-    # prog_comp = [0] * NUM_AGENTS
-    # while any(p.is_alive() for p in processes):
-    #     try:
-    #         process_id, progress, reward = queue.get(timeout=0.1)
-    #         if completed[process_id] < progress:
-    #             print(f"[{process_id}]: {prog_comp[process_id]}, {reward}")
-    #             # progress_bars[process_id].update(progress - completed[process_id])
-    #             # progress_bars[process_id].set_postfix({"Reward": f"{reward:.2f}"})
-    #             completed[process_id] = progress
-    #             prog_comp[process_id] += progress
-    #     except _queue.Empty:
-    #         pass
-
-    # for i in progress_bars:
-    #     i.close()
     for p in processes:
         p.join()
 
