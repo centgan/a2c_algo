@@ -8,3 +8,4 @@ __pycache__
 *.log
 orders.json
 data
+.DS_Store
